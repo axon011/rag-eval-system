@@ -11,6 +11,49 @@ http://localhost:8000
 
 ---
 
+## LLM Provider Configuration
+
+The system supports multiple LLM providers. Configure via environment variables:
+
+### Option 1: Ollama (Local) - Default
+```bash
+LLM_PROVIDER=ollama
+LLM_MODEL=llama3.2
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+### Option 2: OpenAI
+```bash
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o
+LLM_API_KEY=sk-...
+OPENAI_BASE_URL=  # Optional: for Azure OpenAI or compatible APIs
+```
+
+### Option 3: Anthropic
+```bash
+LLM_PROVIDER=anthropic
+LLM_MODEL=claude-3-5-sonnet-20241022
+LLM_API_KEY=sk-ant-...
+```
+
+### Embedding Provider
+
+### Option 1: Ollama Embeddings - Default
+```bash
+EMBED_PROVIDER=ollama
+EMBED_MODEL=nomic-embed-text
+```
+
+### Option 2: OpenAI Embeddings
+```bash
+EMBED_PROVIDER=openai
+EMBED_MODEL=text-embedding-3-small
+EMBED_API_KEY=sk-...
+```
+
+---
+
 ## Endpoints
 
 ### 1. Health Check
