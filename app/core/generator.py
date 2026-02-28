@@ -1,6 +1,8 @@
 import os
 from typing import List, Dict, Any
 from langchain_community.llms import Ollama
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 
 
 class Generator:
@@ -8,24 +10,40 @@ class Generator:
         self,
         base_url: str = None,
         model: str = None,
-        temperature: float = 0.0
+        temperature: float = 0.0,
+        provider: str = None,
+        api_key: str = None,
     ):
         self.base_url = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
-        self.model = model or os.getenv("OLLAMA_MODEL", "llama3.2")
+        self.model = model or os.getenv("LLM_MODEL", "llama3.2")
         self.temperature = temperature
-        
-        self.llm = Ollama(
-            base_url=self.base_url,
-            model=self.model,
-            temperature=self.temperature
-        )
+        self.provider = provider or os.getenv("LLM_PROVIDER", "ollama")
+        self.api_key = api_key or os.getenv("LLM_API_KEY")
+
+        if self.provider == "openai":
+            self.llm = ChatOpenAI(
+                model=self.model,
+                api_key=self.api_key,
+                temperature=self.temperature,
+                base_url=os.getenv("OPENAI_BASE_URL"),
+            )
+        elif self.provider == "anthropic":
+            self.llm = ChatAnthropic(
+                model=self.model, api_key=self.api_key, temperature=self.temperature
+            )
+        else:
+            self.llm = Ollama(
+                base_url=self.base_url, model=self.model, temperature=self.temperature
+            )
 
     def generate(self, question: str, context_chunks: List[Dict[str, Any]]) -> str:
-        context = "\n\n".join([
-            f"[Source {i+1}]: {chunk['text']}"
-            for i, chunk in enumerate(context_chunks)
-        ])
-        
+        context = "\n\n".join(
+            [
+                f"[Source {i + 1}]: {chunk['text']}"
+                for i, chunk in enumerate(context_chunks)
+            ]
+        )
+
         prompt = f"""You are a helpful AI assistant. Use the following context to answer the question accurately and concisely.
 
 Context:
@@ -41,8 +59,12 @@ Instructions:
 
 Answer:"""
 
-        response = self.llm.invoke(prompt)
-        return response
+        if self.provider in ["openai", "anthropic"]:
+            response = self.llm.invoke(prompt)
+            return response.content
+        else:
+            response = self.llm.invoke(prompt)
+            return response
 
     def rewrite_query(self, question: str) -> str:
         prompt = f"""Rewrite the following question to be more effective for document retrieval. 
@@ -52,8 +74,15 @@ Original question: {question}
 
 Rewritten question:"""
 
-        response = self.llm.invoke(prompt)
-        return response.strip()
+        if self.provider in ["openai", "anthropic"]:
+            response = self.llm.invoke(prompt)
+            return response.content.strip()
+        else:
+            response = self.llm.invoke(prompt)
+            return response.strip()
 
     def get_model_name(self) -> str:
         return self.model
+
+    def get_provider(self) -> str:
+        return self.provider
