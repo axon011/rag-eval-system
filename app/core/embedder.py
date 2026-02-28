@@ -11,11 +11,15 @@ class Embedder:
         model: str = None,
         provider: str = None,
         api_key: str = None,
+        use_cache: bool = True,
     ):
         self.base_url = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
         self.model = model or os.getenv("EMBED_MODEL", "nomic-embed-text")
         self.provider = provider or os.getenv("EMBED_PROVIDER", "ollama")
         self.api_key = api_key or os.getenv("EMBED_API_KEY")
+        self.use_cache = (
+            use_cache and os.getenv("QUERY_CACHE_ENABLED", "true").lower() == "true"
+        )
 
         if self.provider == "openai":
             self.embeddings = OpenAIEmbeddings(
@@ -30,6 +34,17 @@ class Embedder:
         return self.embeddings.embed_documents(texts)
 
     def embed_query(self, text: str) -> List[float]:
+        if self.use_cache:
+            from app.cache import embedding_cache
+
+            cached = embedding_cache.get(text)
+            if cached is not None:
+                return cached
+
+            embedding = self.embeddings.embed_query(text)
+            embedding_cache.set(text, embedding)
+            return embedding
+
         return self.embeddings.embed_query(text)
 
     def get_model_name(self) -> str:

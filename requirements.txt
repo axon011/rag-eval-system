@@ -16,3 +16,6 @@ pytest==8.3.2
 python-dotenv==1.0.1
 tqdm==4.66.0
 datasets==2.18.0
+cachetools==5.3.3
+python-json-logger==2.0.7
+aiofiles==23.2.1

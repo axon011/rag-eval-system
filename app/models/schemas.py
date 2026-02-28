@@ -20,7 +20,9 @@ class Source(BaseModel):
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="The question to ask")
-    rewrite_query: bool = Field(default=True, description="Whether to rewrite the query for better retrieval")
+    rewrite_query: bool = Field(
+        default=True, description="Whether to rewrite the query for better retrieval"
+    )
 
 
 class QueryResponse(BaseModel):
@@ -30,6 +32,7 @@ class QueryResponse(BaseModel):
     retrieval_mode: str
     rewritten_query: Optional[str] = None
     latency_ms: Optional[float] = None
+    cached: Optional[bool] = False
 
 
 class HealthResponse(BaseModel):

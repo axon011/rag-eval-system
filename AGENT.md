@@ -226,3 +226,86 @@ datasets==2.18.0
 - Sample PDF needs to be a valid PDF file (not manually created)
 - Docker socket permission may require: `sudo chmod 666 /var/run/docker.sock`
 - May need to restart containers after code changes: `docker-compose restart`
+
+---
+
+# Plan 2: Job Description Enhancement
+
+## Goal
+Match job description requirements:
+- ✅ Hybrid retrieval (dense + BM25)
+- ✅ RAGAs benchmarking
+- ✅ MLflow tracking
+- ❌ Markdown corpus support
+- ❌ Async embedding pre-computation
+- ❌ Query caching
+- ❌ Sub-300ms p95 latency
+- ❌ JSON structured logging
+
+---
+
+## Phase 7: Markdown Support
+
+### Tasks
+- [ ] Add `.md` file ingestion route
+- [ ] Create Markdown document loader
+- [ ] Test with sample markdown files
+
+### Files
+- `app/routes/ingest.py` - Add markdown endpoint
+- `app/core/loaders.py` - New file for document loaders
+
+---
+
+## Phase 8: Async Embedding Pre-computation
+
+### Tasks
+- [ ] Create background embedding worker
+- [ ] Add embedding cache storage
+- [ ] Queue-based processing
+
+### Files
+- `app/workers/embedding_worker.py` - Background worker
+- `app/cache/embedding_cache.py` - Embedding storage
+
+---
+
+## Phase 9: Query Caching
+
+### Tasks
+- [ ] Implement LRU cache for queries
+- [ ] Cache embeddings with TTL
+- [ ] Cache responses with TTL
+
+### Files
+- `app/cache/query_cache.py` - Response cache
+
+---
+
+## Phase 10: JSON Structured Logging
+
+### Tasks
+- [ ] Create logging config
+- [ ] Add JSON formatter
+- [ ] Log key events
+
+### Files
+- `app/logging_config.py` - New logging configuration
+
+---
+
+## Phase 11: Performance Optimization
+
+### Tasks
+- [ ] Connection pooling for Qdrant
+- [ ] Benchmark p95 latency
+- [ ] Optimize for sub-300ms
+
+---
+
+## New Dependencies
+```
+cachetools==5.3.3
+python-json-logger==2.0.7
+aiofiles==23.2.1
+```
