@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rag-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - rag-network
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: rag-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - rag-network
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: rag-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow/artifacts
+    environment:
+      - MLFLOW_TRACKING_URI=http://localhost:5000
+      - MLFLOW_BACKEND_STORE=sqlite:///mlflow.db
+      - MLFLOW_ARTIFACT_ROOT=/mlflow/artifacts
+    networks:
+      - rag-network
+    restart: unless-stopped
+    command: mlflow server --host 0.0.0.0 --port 5000
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-fastapi
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./eval:/app/eval
+      - ./mlflow_tracking:/app/mlflow_tracking
+      - ./tests:/app/tests
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.2
+      - EMBED_MODEL=nomic-embed-text
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_COLLECTION=documents
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - CHUNK_SIZE=512
+      - CHUNK_OVERLAP=64
+      - TOP_K=5
+      - RETRIEVAL_MODE=hybrid
+    depends_on:
+      - ollama
+      - qdrant
+    networks:
+      - rag-network
+    restart: unless-stopped
+
+networks:
+  rag-network:
+    driver: bridge
+
+volumes:
+  ollama_data:
+  qdrant_data:
+  mlflow_data:
