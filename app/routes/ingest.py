@@ -1,66 +1,95 @@
 import os
-import io
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-import fitz
 
 from app.models.schemas import IngestResponse
+from app.core.loaders import get_loader
 
 router = APIRouter(prefix="/ingest", tags=["Ingest"])
 
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "512"))
-CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "64"))
 
-
-def extract_text_from_pdf(file_bytes: bytes) -> str:
-    text = ""
-    doc = fitz.open(stream=file_bytes, filetype="pdf")
-    
-    for page_num in range(len(doc)):
-        page = doc[page_num]
-        text += page.get_text()
-    
-    doc.close()
-    return text
-
-
-def chunk_text(text: str) -> list[str]:
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        separators=["\n\n", "\n", " ", ""]
-    )
-    
-    chunks = splitter.split_text(text)
-    return chunks
+SUPPORTED_EXTENSIONS = {".pdf", ".md", ".markdown", ".txt"}
 
 
 @router.post("/", response_model=IngestResponse)
-async def ingest_pdf(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
-    
+async def ingest_document(file: UploadFile = File(...)):
+    """Ingest PDF, Markdown, or text files."""
+
+    file_ext = os.path.splitext(file.filename.lower())[1]
+
+    if file_ext not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type. Supported: {', '.join(SUPPORTED_EXTENSIONS)}",
+        )
+
     try:
         contents = await file.read()
-        
-        text = extract_text_from_pdf(contents)
-        
-        if not text.strip():
-            raise HTTPException(status_code=400, detail="No text could be extracted from PDF")
-        
-        chunks = chunk_text(text)
-        
+
+        loader = get_loader(file_ext)
+        chunks = loader.load_and_chunk(contents)
+
+        if not chunks or not chunks[0].strip():
+            raise HTTPException(
+                status_code=400, detail="No text could be extracted from file"
+            )
+
         from app.core.pipeline import RAGPipeline
+
         pipeline = RAGPipeline()
-        
+
         result = pipeline.ingest_documents(chunks)
-        
+
         return IngestResponse(**result)
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+
+@router.post("/pdf", response_model=IngestResponse)
+async def ingest_pdf(file: UploadFile = File(...)):
+    """Ingest PDF files only."""
+
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+
+    return await ingest_document(file)
+
+
+@router.post("/markdown", response_model=IngestResponse)
+async def ingest_markdown(file: UploadFile = File(...)):
+    """Ingest Markdown files only."""
+
+    file_ext = os.path.splitext(file.filename.lower())[1]
+    if file_ext not in [".md", ".markdown", ".txt"]:
+        raise HTTPException(status_code=400, detail="Only Markdown files are supported")
+
+    return await ingest_document(file)
 
 
 @router.get("/health")
 async def ingest_health():
     return {"status": "ingest service healthy"}
+
+
+@router.get("/cache/stats")
+async def cache_stats():
+    """Get cache statistics."""
+    from app.cache import embedding_cache, query_cache
+
+    return {
+        "embedding_cache": embedding_cache.stats(),
+        "query_cache": query_cache.stats(),
+    }
+
+
+@router.post("/cache/clear")
+async def clear_cache():
+    """Clear all caches."""
+    from app.cache import embedding_cache, query_cache
+
+    embedding_cache.clear()
+    query_cache.clear()
+
+    return {"status": "success", "message": "All caches cleared"}

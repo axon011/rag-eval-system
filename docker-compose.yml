@@ -74,6 +74,12 @@ services:
       - TOP_K=5
       - RETRIEVAL_MODE=hybrid
       - UI_PATH=/app/ui
+      - QUERY_CACHE_ENABLED=true
+      - EMBEDDING_CACHE_TTL=3600
+      - RESPONSE_CACHE_TTL=900
+      - CACHE_MAX_SIZE=1000
+      - LOG_FORMAT=json
+      - LOG_LEVEL=INFO
     depends_on:
       - ollama
       - qdrant
