@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Q&A System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 1rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .tab.active {
+            color: #00d9ff;
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .panel {
+            display: none;
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .upload-area {
+            border: 2px dashed #444;
+            border-radius: 12px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #00d9ff;
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            color: #aaa;
+            margin-bottom: 15px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .upload-btn:hover {
+            transform: scale(1.05);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status.success {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+        }
+
+        .status.error {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid #ff4444;
+            color: #ff4444;
+        }
+
+        .status.loading {
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid #00d9ff;
+            color: #00d9ff;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 60vh;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 12px;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #00d9ff, #0099ff);
+            color: #000;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .message .sources {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .message .source-item {
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+            margin-top: 5px;
+            font-size: 0.8rem;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        #questionInput {
+            flex: 1;
+            padding: 15px 20px;
+            border: 1px solid #333;
+            border-radius: 12px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #questionInput:focus {
+            border-color: #00d9ff;
+        }
+
+        #sendBtn {
+            padding: 15px 30px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            border: none;
+            border-radius: 12px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        #sendBtn:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+
+        #sendBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+        }
+
+        .service-status {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .service-badge {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .service-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .latency {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>RAG Q&A System</h1>
+            <p class="subtitle">Production Retrieval-Augmented Generation with Evaluation</p>
+        </header>
+
+        <div class="service-status">
+            <div class="service-badge">
+                <span class="dot"></span>
+                FastAPI
+            </div>
+            <div class="service-badge">
+                <span class="dot"></span>
+                Ollama
+            </div>
+            <div class="service-badge">
+                <span class="dot"></span>
+                Qdrant
+            </div>
+            <div class="service-badge">
+                <span class="dot"></span>
+                MLflow
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="query">Query</button>
+            <button class="tab" data-tab="upload">Upload PDF</button>
+        </div>
+
+        <div id="query" class="panel active">
+            <div class="chat-container">
+                <div class="messages" id="messages">
+                    <div class="empty-state">
+                        Ask a question about your uploaded documents...
+                    </div>
+                </div>
+                <div class="input-area">
+                    <input type="text" id="questionInput" placeholder="Ask a question...">
+                    <button id="sendBtn">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="upload" class="panel">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <p class="upload-text">Drag & drop a PDF file here</p>
+                <p class="upload-text">or</p>
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                    Choose File
+                </button>
+                <input type="file" id="fileInput" accept=".pdf">
+            </div>
+            <div class="status" id="uploadStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // File upload
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            uploadStatus.style.display = 'block';
+            uploadStatus.className = 'status loading';
+            uploadStatus.textContent = 'Uploading and processing PDF...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE}/ingest/`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    uploadStatus.className = 'status success';
+                    uploadStatus.textContent = `✅ Success! Indexed ${data.chunks_indexed} chunks using ${data.embed_model}`;
+                } else {
+                    throw new Error(data.detail || 'Upload failed');
+                }
+            } catch (error) {
+                uploadStatus.className = 'status error';
+                uploadStatus.textContent = `❌ Error: ${error.message}`;
+            }
+        });
+
+        // Drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#00d9ff';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#444';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#444';
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'application/pdf') {
+                fileInput.files = e.dataTransfer.files;
+                fileInput.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Chat functionality
+        const questionInput = document.getElementById('questionInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const messages = document.getElementById('messages');
+
+        async function sendQuestion() {
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            // Add user message
+            addMessage(question, 'user');
+            questionInput.value = '';
+
+            // Add loading message
+            const loadingMsg = addMessage('Thinking...', 'assistant');
+
+            try {
+                const response = await fetch(`${API_BASE}/query/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Remove loading message
+                    loadingMsg.remove();
+
+                    // Add answer
+                    const answerDiv = addMessage(data.answer, 'assistant');
+
+                    // Add sources if available
+                    if (data.sources && data.sources.length > 0) {
+                        const sourcesDiv = document.createElement('div');
+                        sourcesDiv.className = 'sources';
+                        sourcesDiv.innerHTML = '<strong>Sources:</strong>';
+                        
+                        data.sources.forEach((source, i) => {
+                            sourcesDiv.innerHTML += `
+                                <div class="source-item">
+                                    [Source ${i+1}] ${source.text.substring(0, 150)}...
+                                    <br><small>Score: ${(source.score * 100).toFixed(1)}%</small>
+                                </div>
+                            `;
+                        });
+                        answerDiv.appendChild(sourcesDiv);
+                    }
+
+                    // Add latency
+                    if (data.latency_ms) {
+                        const latency = document.createElement('div');
+                        latency.className = 'latency';
+                        latency.textContent = `Latency: ${data.latency_ms}ms | Mode: ${data.retrieval_mode}`;
+                        answerDiv.appendChild(latency);
+                    }
+                } else {
+                    loadingMsg.textContent = `Error: ${data.detail}`;
+                }
+            } catch (error) {
+                loadingMsg.textContent = `Error: ${error.message}`;
+            }
+
+            sendBtn.disabled = false;
+        }
+
+        function addMessage(text, type) {
+            // Remove empty state
+            const emptyState = messages.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.textContent = text;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+            return div;
+        }
+
+        sendBtn.addEventListener('click', sendQuestion);
+        questionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendQuestion();
+        });
+    </script>
+</body>
+</html>
