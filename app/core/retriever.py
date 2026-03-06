@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Optional
 import uuid
 import numpy as np
 from qdrant_client import QdrantClient
@@ -10,21 +10,21 @@ from rank_bm25 import BM25Okapi
 class Retriever:
     def __init__(
         self,
-        qdrant_host: str = None,
-        qdrant_port: int = None,
-        collection_name: str = None,
+        qdrant_host: Optional[str] = None,
+        qdrant_port: Optional[int] = None,
+        collection_name: Optional[str] = None,
         top_k: int = 5
     ):
-        self.qdrant_host = os.getenv("QDRANT_HOST", "qdrant")
+        self.qdrant_host = qdrant_host or os.getenv("QDRANT_HOST", "qdrant")
         self.qdrant_port = int(os.getenv("QDRANT_PORT", "6333"))
-        self.collection_name = os.getenv("QDRANT_COLLECTION", "documents")
+        self.collection_name = collection_name or os.getenv("QDRANT_COLLECTION", "documents")
         self.top_k = top_k or int(os.getenv("TOP_K", "5"))
         
         self.client = QdrantClient(host=self.qdrant_host, port=self.qdrant_port)
         self._ensure_collection()
         
-        self.bm25_index = None
-        self.chunks = []
+        self.bm25_index: Optional[BM25Okapi] = None
+        self.chunks: List[str] = []
 
     def _ensure_collection(self):
         collections = self.client.get_collections().collections
@@ -144,7 +144,7 @@ class Retriever:
         
         return fused
 
-    def retrieve(self, query_vector: List[float], query: str, mode: str = "hybrid", top_k: int = None) -> List[Dict[str, Any]]:
+    def retrieve(self, query_vector: List[float], query: str, mode: str = "hybrid", top_k: Optional[int] = None) -> List[Dict[str, Any]]:
         k = top_k or self.top_k
         if mode == "dense":
             return self.dense_retrieval(query_vector, top_k=k)

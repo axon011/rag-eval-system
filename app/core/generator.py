@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from langchain_community.llms import Ollama
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
@@ -8,13 +8,13 @@ from langchain_anthropic import ChatAnthropic
 class Generator:
     def __init__(
         self,
-        base_url: str = None,
-        model: str = None,
+        base_url: Optional[str] = None,
+        model: Optional[str] = None,
         temperature: float = 0.0,
-        provider: str = None,
-        api_key: str = None,
+        provider: Optional[str] = None,
+        api_key: Optional[str] = None,
     ):
-        self.base_url = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
+        self.base_url = base_url or os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
         self.model = model or os.getenv("LLM_MODEL", "llama3.2")
         self.temperature = temperature
         self.provider = provider or os.getenv("LLM_PROVIDER", "ollama")
@@ -36,7 +36,14 @@ class Generator:
                 base_url=self.base_url, model=self.model, temperature=self.temperature
             )
 
-    def generate(self, question: str, context_chunks: List[Dict[str, Any]], model: str = None, provider: str = None, api_key: str = None) -> str:
+    def generate(
+        self, 
+        question: str, 
+        context_chunks: List[Dict[str, Any]], 
+        model: Optional[str] = None, 
+        provider: Optional[str] = None, 
+        api_key: Optional[str] = None
+    ) -> str:
         # Use provided values or fall back to instance values
         model = model or self.model
         provider = provider or self.provider
@@ -75,12 +82,12 @@ Instructions:
 
 Answer:"""
 
-        if self.provider in ["openai", "anthropic"]:
+        if provider in ["openai", "anthropic"]:
             response = current_llm.invoke(prompt)
             return response.content
         else:
             response = current_llm.invoke(prompt)
-            return response
+            return str(response)
 
     def rewrite_query(self, question: str) -> str:
         prompt = f"""Rewrite the following question to be more effective for document retrieval. 
@@ -95,7 +102,7 @@ Rewritten question:"""
             return response.content.strip()
         else:
             response = self.llm.invoke(prompt)
-            return response.strip()
+            return str(response).strip()
 
     def get_model_name(self) -> str:
         return self.model
