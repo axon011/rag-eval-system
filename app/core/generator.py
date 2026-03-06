@@ -36,7 +36,23 @@ class Generator:
                 base_url=self.base_url, model=self.model, temperature=self.temperature
             )
 
-    def generate(self, question: str, context_chunks: List[Dict[str, Any]]) -> str:
+    def generate(self, question: str, context_chunks: List[Dict[str, Any]], model: str = None, provider: str = None, api_key: str = None) -> str:
+        # Use provided values or fall back to instance values
+        model = model or self.model
+        provider = provider or self.provider
+        api_key = api_key or self.api_key
+        
+        # Create LLM instance with provided settings if different
+        if provider != self.provider or model != self.model or api_key != self.api_key:
+            if provider == "openai":
+                llm = ChatOpenAI(model=model, api_key=api_key, temperature=self.temperature)
+            elif provider == "anthropic":
+                llm = ChatAnthropic(model=model, api_key=api_key, temperature=self.temperature)
+            else:
+                llm = Ollama(base_url=self.base_url, model=model, temperature=self.temperature)
+            current_llm = llm
+        else:
+            current_llm = self.llm
         context = "\n\n".join(
             [
                 f"[Source {i + 1}]: {chunk['text']}"
@@ -60,10 +76,10 @@ Instructions:
 Answer:"""
 
         if self.provider in ["openai", "anthropic"]:
-            response = self.llm.invoke(prompt)
+            response = current_llm.invoke(prompt)
             return response.content
         else:
-            response = self.llm.invoke(prompt)
+            response = current_llm.invoke(prompt)
             return response
 
     def rewrite_query(self, question: str) -> str:

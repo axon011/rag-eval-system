@@ -144,10 +144,11 @@ class Retriever:
         
         return fused
 
-    def retrieve(self, query_vector: List[float], query: str, mode: str = "hybrid") -> List[Dict[str, Any]]:
+    def retrieve(self, query_vector: List[float], query: str, mode: str = "hybrid", top_k: int = None) -> List[Dict[str, Any]]:
+        k = top_k or self.top_k
         if mode == "dense":
-            return self.dense_retrieval(query_vector)
+            return self.dense_retrieval(query_vector, top_k=k)
         elif mode == "sparse":
-            return self.sparse_retrieval(query)
+            return self.sparse_retrieval(query, top_k=k)
         else:
-            return self.hybrid_retrieval(query_vector, query)
+            return self.hybrid_retrieval(query_vector, query, top_k=k)
