@@ -57,14 +57,10 @@ services:
       - ./ui:/app/ui
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
-      - OLLAMA_MODEL=llama3.2
       - LLM_PROVIDER=ollama
       - LLM_MODEL=llama3.2
-      - LLM_API_KEY=
       - EMBED_PROVIDER=ollama
       - EMBED_MODEL=nomic-embed-text
-      - EMBED_API_KEY=
-      - OPENAI_BASE_URL=
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - QDRANT_COLLECTION=documents

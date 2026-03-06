@@ -20,13 +20,42 @@ class Generator:
         self.provider = provider or os.getenv("LLM_PROVIDER", "ollama")
         self.api_key = api_key or os.getenv("LLM_API_KEY")
 
-        if self.provider == "openai":
+        # Auto-detect OpenRouter from API key prefix
+        if self.api_key and self.api_key.startswith("sk-or-"):
+            self.provider = "openrouter"
+
+        if self.provider == "openrouter":
             self.llm = ChatOpenAI(
                 model=self.model,
                 api_key=self.api_key,
                 temperature=self.temperature,
-                base_url=os.getenv("OPENAI_BASE_URL"),
+                base_url="https://openrouter.ai/api/v1",
+                default_headers={
+                    "HTTP-Referer": "https://github.com/axon011/rag-eval-system",
+                    "X-Title": "RAG Eval System"
+                }
             )
+        elif self.provider == "openai":
+            openai_base_url = os.getenv("OPENAI_BASE_URL")
+            # Support OpenRouter (api.openrouter.ai)
+            if openai_base_url and "openrouter" in openai_base_url:
+                self.llm = ChatOpenAI(
+                    model=self.model,
+                    api_key=self.api_key,
+                    temperature=self.temperature,
+                    base_url=openai_base_url,
+                    default_headers={
+                        "HTTP-Referer": "https://github.com/axon011/rag-eval-system",
+                        "X-Title": "RAG Eval System"
+                    }
+                )
+            else:
+                self.llm = ChatOpenAI(
+                    model=self.model,
+                    api_key=self.api_key,
+                    temperature=self.temperature,
+                    base_url=openai_base_url if openai_base_url else None,
+                )
         elif self.provider == "anthropic":
             self.llm = ChatAnthropic(
                 model=self.model, api_key=self.api_key, temperature=self.temperature
@@ -49,9 +78,24 @@ class Generator:
         provider = provider or self.provider
         api_key = api_key or self.api_key
         
+        # Auto-detect OpenRouter from API key prefix
+        if api_key and api_key.startswith("sk-or-"):
+            provider = "openrouter"
+        
         # Create LLM instance with provided settings if different
         if provider != self.provider or model != self.model or api_key != self.api_key:
-            if provider == "openai":
+            if provider == "openrouter":
+                llm = ChatOpenAI(
+                    model=model, 
+                    api_key=api_key, 
+                    temperature=self.temperature,
+                    base_url="https://openrouter.ai/api/v1",
+                    default_headers={
+                        "HTTP-Referer": "https://github.com/axon011/rag-eval-system",
+                        "X-Title": "RAG Eval System"
+                    }
+                )
+            elif provider == "openai":
                 llm = ChatOpenAI(model=model, api_key=api_key, temperature=self.temperature)
             elif provider == "anthropic":
                 llm = ChatAnthropic(model=model, api_key=api_key, temperature=self.temperature)
@@ -82,7 +126,7 @@ Instructions:
 
 Answer:"""
 
-        if provider in ["openai", "anthropic"]:
+        if provider in ["openai", "anthropic", "openrouter"]:
             response = current_llm.invoke(prompt)
             return response.content
         else:
@@ -97,7 +141,7 @@ Original question: {question}
 
 Rewritten question:"""
 
-        if self.provider in ["openai", "anthropic"]:
+        if self.provider in ["openai", "anthropic", "openrouter"]:
             response = self.llm.invoke(prompt)
             return response.content.strip()
         else:
