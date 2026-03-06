@@ -11,7 +11,7 @@ class RAGPipeline:
         embedder: Optional[Embedder] = None,
         retriever: Optional[Retriever] = None,
         generator: Optional[Generator] = None,
-        retrieval_mode: str = None,
+        retrieval_mode: Optional[str] = None,
         model: str = "llama3.2",
         provider: str = "ollama",
         api_key: Optional[str] = None,

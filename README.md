@@ -234,6 +234,91 @@ curl -X POST "http://localhost:8000/query/" \
 └──────────────────┘         └──────────────────────────────┘
 ```
 
+## Demo
+
+### Web UI
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  RAG Q&A System                                              │
+│  Production Retrieval-Augmented Generation with Evaluation    │
+├─────────────────────────────────────────────────────────────┤
+│  [Query]  [Upload]  [Settings]     ● FastAPI ● Ollama ...   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ 🤖 What are the key benefits of RAG systems?          ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ RAG systems provide several key benefits:              ││
+│  │                                                         ││
+│  │ • Improved accuracy by grounding responses in          ││
+│  │   source documents                                     ││
+│  │ • Reduced hallucinations through context retrieval      ││
+│  │ • Ability to cite sources for verification              ││
+│  │                                                         ││
+│  │ Sources:                                                ││
+│  │ [Source 1] 92.5% │ [Source 2] 87.3% │ [Source 3] 81% ││
+│  │ Latency: 1.2s | Mode: hybrid                           ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                              │
+│  ┌────────────────────────────────────────┐  [Send]        │
+│  │ Ask a question...                      │                 │
+│  └────────────────────────────────────────┘                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Example API Usage
+
+```bash
+# Upload a document
+curl -X POST "http://localhost:8000/ingest/" \
+  -F "file=@document.pdf"
+
+# Response:
+# {"status":"success","chunks_indexed":42,"embed_model":"nomic-embed-text"}
+
+# Ask a question
+curl -X POST "http://localhost:8000/query/" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What are the main findings?"}'
+
+# Response:
+# {
+#   "answer": "The main findings indicate that...",
+#   "sources": [{"text": "...", "score": 0.92}],
+#   "retrieved_chunks": 5,
+#   "latency_ms": 1250.5,
+#   "retrieval_mode": "hybrid"
+# }
+```
+
+## Key Contributions
+
+This project was enhanced with the following improvements:
+
+### Features Added
+- **Modern Web UI**: Full-featured chat interface with Query, Upload, and Settings tabs
+- **Multi-Provider LLM Support**: Switch between Ollama (local), OpenAI, and Anthropic
+- **Configurable Settings**: Model selection, retrieval mode, chunk count via UI
+- **LRU Caching**: Improved performance for repeated queries
+- **Enhanced UX**: Copy, retry, keyboard shortcuts, progress indicators
+
+### Technical Improvements
+- Added type hints throughout the codebase
+- Implemented proper error handling
+- Added request cancellation (AbortController)
+- Integrated localStorage for settings persistence
+- Dockerized UI folder for production deployment
+
+### What I Learned
+- Building full-stack RAG applications with FastAPI + React-like UI
+- Multi-provider LLM integration (Ollama, OpenAI, Anthropic)
+- Hybrid retrieval (dense + sparse) with reciprocal rank fusion
+- Docker multi-container orchestration
+- Performance optimization with caching strategies
+
 ## Features
 
 - **PDF Ingestion**: Upload and index PDF documents with automatic text extraction and chunking
