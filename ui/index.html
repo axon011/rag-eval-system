@@ -149,6 +149,7 @@
                 <label class="settings-label">LLM Provider</label>
                 <div class="api-provider">
                     <button class="provider-btn active" data-provider="ollama">Ollama (Local)</button>
+                    <button class="provider-btn" data-provider="openrouter">OpenRouter</button>
                     <button class="provider-btn" data-provider="openai">OpenAI</button>
                     <button class="provider-btn" data-provider="anthropic">Anthropic</button>
                 </div>
@@ -161,7 +162,8 @@
             </div>
             <div class="settings-group">
                 <label class="settings-label">Model</label>
-                <input type="text" class="settings-input" id="modelInput" placeholder="llama3.2" value="llama3.2">
+                <input type="text" class="settings-input" id="modelInput" placeholder="llama3.2" value="llama3.2" list="modelSuggestions">
+                <datalist id="modelSuggestions"></datalist>
             </div>
             <div class="settings-group">
                 <label class="settings-label">Retrieval Mode</label>
@@ -210,11 +212,41 @@
             const apiKeyGroup = document.getElementById('apiKeyGroup');
             const apiKeyStatus = document.getElementById('apiKeyStatus');
             const apiKeyHint = document.getElementById('apiKeyHint');
+            const modelInput = document.getElementById('modelInput');
+            const modelSuggestions = document.getElementById('modelSuggestions');
+            
+            // Model suggestions based on provider
+            const models = {
+                ollama: ['llama3.2', 'llama3.1', 'mistral', 'codellama', 'phi3'],
+                openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo', 'openai/gpt-4o-mini', 'openai/gpt-4o'],
+                anthropic: ['claude-3-haiku', 'claude-3-sonnet', 'claude-3-opus', 'claude-3-5-haiku'],
+                openrouter: ['z-ai/glm-4.5-air:free', 'openai/gpt-4o-mini', 'google/gemma-2-9b', 'meta-llama/llama-3.1-8b-instruct']
+            };
+            
+            // Auto-detect OpenRouter from key
+            if (settings.apiKey && settings.apiKey.startsWith('sk-or-')) {
+                settings.provider = 'openrouter';
+                document.querySelectorAll('.provider-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+            }
+            
+            // Update datalist options
+            modelSuggestions.innerHTML = models[settings.provider] || models.ollama
+                .map(m => `<option value="${m}">`).join('');
+            
+            // Set default model for provider
+            if (!settings.model || settings.model === 'llama3.2') {
+                modelInput.value = models[settings.provider][0];
+                settings.model = modelInput.value;
+            }
             
             if (settings.provider === 'ollama') {
                 apiKeyGroup.style.display = 'none';
+                modelInput.placeholder = 'llama3.2';
             } else {
                 apiKeyGroup.style.display = 'block';
+                modelInput.placeholder = 'e.g., openai/gpt-4o-mini';
                 if (settings.apiKey) {
                     apiKeyStatus.className = 'api-key-status set';
                     apiKeyStatus.textContent = '✓ API key set';
@@ -226,7 +258,11 @@
             
             // Update hint based on provider
             if (settings.provider === 'openai') {
-                apiKeyHint.textContent = 'Get your key from: https://platform.openai.com/api-keys';
+                if (settings.apiKey && settings.apiKey.startsWith('sk-or-')) {
+                    apiKeyHint.textContent = 'OpenRouter detected - use model format: openai/gpt-4o-mini';
+                } else {
+                    apiKeyHint.textContent = 'Get your key from: https://platform.openai.com/api-keys';
+                }
             } else if (settings.provider === 'anthropic') {
                 apiKeyHint.textContent = 'Get your key from: https://console.anthropic.com/settings/keys';
             }
