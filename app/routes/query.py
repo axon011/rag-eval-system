@@ -28,7 +28,13 @@ async def query_documents(request: QueryRequest):
                     cached=True,
                 )
 
-        pipeline = RAGPipeline()
+        pipeline = RAGPipeline(
+            retrieval_mode=request.retrieval_mode,
+            model=request.model,
+            provider=request.provider,
+            api_key=request.api_key,
+            max_chunks=request.max_chunks
+        )
 
         start_time = time.time()
 

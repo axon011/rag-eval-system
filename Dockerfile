@@ -12,6 +12,7 @@ COPY requirements.txt .
 RUN uv pip install --system -r requirements.txt
 
 COPY app /app/app
+COPY ui /app/ui
 COPY eval /app/eval
 COPY mlflow_tracking /app/mlflow_tracking
 COPY tests /app/tests

@@ -11,12 +11,20 @@ class RAGPipeline:
         embedder: Optional[Embedder] = None,
         retriever: Optional[Retriever] = None,
         generator: Optional[Generator] = None,
-        retrieval_mode: str = None
+        retrieval_mode: str = None,
+        model: str = "llama3.2",
+        provider: str = "ollama",
+        api_key: Optional[str] = None,
+        max_chunks: int = 5
     ):
         self.embedder = embedder or Embedder()
         self.retriever = retriever or Retriever()
         self.generator = generator or Generator()
         self.retrieval_mode = retrieval_mode or os.getenv("RETRIEVAL_MODE", "hybrid")
+        self.model = model
+        self.provider = provider
+        self.api_key = api_key
+        self.max_chunks = max_chunks
 
     def ingest_documents(self, chunks: List[str]) -> Dict[str, Any]:
         vectors = self.embedder.embed_documents(chunks)
@@ -39,10 +47,17 @@ class RAGPipeline:
         retrieved_docs = self.retriever.retrieve(
             query_vector=query_vector,
             query=question,
-            mode=self.retrieval_mode
+            mode=self.retrieval_mode,
+            top_k=self.max_chunks
         )
         
-        answer = self.generator.generate(original_question, retrieved_docs)
+        answer = self.generator.generate(
+            original_question, 
+            retrieved_docs,
+            model=self.model,
+            provider=self.provider,
+            api_key=self.api_key
+        )
         
         sources = [
             {
