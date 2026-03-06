@@ -454,6 +454,158 @@ rag-eval-system/
 | MLflow | Experiment tracking |
 | Docker | Containerization |
 
+## Cloud Deployment
+
+### Option 1: DigitalOcean Droplet (Recommended)
+
+1. **Create a Droplet**:
+   - Go to https://digitalocean.com
+   - Create a new Droplet (4GB+ RAM, Ubuntu 22.04)
+   - Add your SSH key
+
+2. **SSH into the server**:
+   ```bash
+   ssh root@your-droplet-ip
+   ```
+
+3. **Install Docker**:
+   ```bash
+   curl -fsSL https://get.docker.com | sh
+   sudo usermod -aG docker $USER
+   ```
+
+4. **Clone and start**:
+   ```bash
+   git clone https://github.com/axon011/rag-eval-system.git
+   cd rag-eval-system
+   docker-compose up -d
+   ```
+
+5. **Configure Firewall** (optional):
+   ```bash
+   ufw allow 8000/tcp
+   ufw allow 22/tcp
+   ufw enable
+   ```
+
+6. **Access the app**:
+   - Web UI: `http://your-droplet-ip:8000`
+   - Qdrant: `http://your-droplet-ip:6333`
+   - MLflow: `http://your-droplet-ip:5000`
+
+**Cost**: ~$24/month for 4GB RAM
+
+---
+
+### Option 2: AWS EC2
+
+1. **Launch Instance**:
+   - Go to EC2 Console
+   - Launch t3.large or larger (8GB RAM recommended)
+   - Use Ubuntu 22.04 AMI
+
+2. **Install Docker**:
+   ```bash
+   sudo apt update
+   sudo apt install -y docker.io
+   sudo systemctl start docker
+   sudo usermod -aG docker ubuntu
+   ```
+
+3. **Configure Security Group**:
+   - Open ports: 8000, 6333, 5000, 11434
+
+4. **Deploy**:
+   ```bash
+   git clone https://github.com/axon011/rag-eval-system.git
+   cd rag-eval-system
+   docker-compose up -d
+   ```
+
+5. **Access**: `http://your-ec2-public-ip:8000`
+
+**Cost**: ~$83/month (on-demand), ~$30/month (spot)
+
+---
+
+### Option 3: Google Cloud Platform
+
+1. **Create VM**:
+   - Go to GCP Console
+   - Create VM with e2-standard-4 (4 vCPU, 16GB)
+   - Allow HTTP/HTTPS traffic
+
+2. **Install Docker**:
+   ```bash
+   sudo apt update && sudo apt install -y docker.io
+   sudo systemctl start docker
+   ```
+
+3. **Deploy**:
+   ```bash
+   git clone https://github.com/axon011/rag-eval-system.git
+   cd rag-eval-system
+   docker-compose up -d
+   ```
+
+4. **Configure Firewall**:
+   - Add firewall rules for ports 8000, 6333, 5000, 11434
+
+**Cost**: ~$67/month
+
+---
+
+### Option 4: Using External LLM (No GPU Required)
+
+For cheaper cloud deployment, use OpenAI instead of local Ollama:
+
+1. **Edit `.env`**:
+   ```bash
+   # Use OpenAI instead of Ollama
+   LLM_PROVIDER=openai
+   OPENAI_API_KEY=sk-your-key-here
+   OPENAI_MODEL=gpt-4o
+   ```
+
+2. **Remove Ollama** from docker-compose.yml (optional)
+
+3. **Deploy to Render/Railway** (cheaper than VM):
+   - Connect GitHub repo
+   - Set environment variables
+   - Deploy
+
+---
+
+### Quick Demo: ngrok (Local to Public URL)
+
+To share your local instance temporarily:
+
+1. **Install ngrok**:
+   ```bash
+   # Windows
+   winget install ngrok
+   
+   # Linux/Mac
+   brew install ngrok
+   ```
+
+2. **Tunnel port 8000**:
+   ```bash
+   ngrok http 8000
+   ```
+
+3. **Share the URL**: Anyone can access your local RAG system via the ngrok URL
+
+---
+
+### Production Considerations
+
+1. **Use OpenAI/Anthropic** instead of Ollama for cloud (no GPU needed)
+2. **Add authentication** to FastAPI endpoints
+3. **Use Qdrant Cloud** (https://qdrant.tech) for managed vector DB
+4. **Set up domain** with Nginx + SSL (Let's Encrypt)
+5. **Configure backups** for Qdrant data
+
 ## License
 
 MIT License
