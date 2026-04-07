@@ -2,7 +2,7 @@
 
 A production-grade RAG (Retrieval-Augmented Generation) Q&A API system with full evaluation pipeline using RAGAs metrics and MLflow experiment tracking. Features a modern web UI with support for multiple LLM providers.
 
-![CI](https://github.com/your-username/rag-eval-system/workflows/CI/badge.svg)
+![CI](https://github.com/axon011/rag-eval-system/workflows/CI/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
 
