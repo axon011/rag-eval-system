@@ -4,6 +4,24 @@ from langchain_community.embeddings import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
 
+class SentenceTransformerEmbeddings:
+    """Wrapper to match LangChain embeddings interface using sentence-transformers."""
+
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+        from sentence_transformers import SentenceTransformer
+        self.model = SentenceTransformer(model_name)
+        try:
+            self.dim = self.model.get_embedding_dimension()
+        except AttributeError:
+            self.dim = self.model.get_sentence_embedding_dimension()
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return self.model.encode(texts).tolist()
+
+    def embed_query(self, text: str) -> List[float]:
+        return self.model.encode(text).tolist()
+
+
 class Embedder:
     def __init__(
         self,
@@ -21,14 +39,19 @@ class Embedder:
             use_cache and os.getenv("QUERY_CACHE_ENABLED", "true").lower() == "true"
         )
 
-        if self.provider == "openai":
+        if self.provider == "sentence-transformers":
+            self.embeddings = SentenceTransformerEmbeddings(model_name=self.model)
+            self._dim = self.embeddings.dim
+        elif self.provider == "openai":
             self.embeddings = OpenAIEmbeddings(
                 model=self.model,
                 api_key=self.api_key,
                 base_url=os.getenv("OPENAI_BASE_URL"),
             )
+            self._dim = None  # determined at runtime
         else:
             self.embeddings = OllamaEmbeddings(base_url=self.base_url, model=self.model)
+            self._dim = None
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         return self.embeddings.embed_documents(texts)
@@ -52,3 +75,11 @@ class Embedder:
 
     def get_provider(self) -> str:
         return self.provider
+
+    def get_dimension(self) -> int:
+        """Return embedding dimension. Probes with a test query if unknown."""
+        if self._dim:
+            return self._dim
+        test = self.embeddings.embed_query("test")
+        self._dim = len(test)
+        return self._dim

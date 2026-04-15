@@ -10,6 +10,7 @@ from datasets import Dataset
 
 from eval.dataset import EvalDataset
 from app.core.pipeline import RAGPipeline
+from mlflow_tracking.log_experiment import MLflowTracker
 
 
 class EvalRunner:
@@ -98,9 +99,22 @@ class EvalRunner:
         
         with open(results_file, 'w') as f:
             json.dump(results_dict, f, indent=2)
-        
+
         print(f"Results saved to {results_file}")
-        
+
+        # Log to MLflow
+        try:
+            tracker = MLflowTracker()
+            run_name = f"eval_{datetime.now().strftime('%Y-%m-%d_%H%M')}"
+            tracker.log_experiment(
+                config=self.config,
+                metrics=results_dict["metrics"],
+                run_name=run_name
+            )
+            print(f"Logged to MLflow: {run_name}")
+        except Exception as e:
+            print(f"MLflow logging skipped: {e}")
+
         return results_dict
     
     def get_latest_results(self) -> Dict[str, Any]:

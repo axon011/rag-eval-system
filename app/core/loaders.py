@@ -1,7 +1,10 @@
 import os
 import fitz
 from typing import List, Optional
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "512"))
