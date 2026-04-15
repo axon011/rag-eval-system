@@ -53,34 +53,51 @@ A production-grade RAG (Retrieval-Augmented Generation) Q&A API system with full
 
 ## Features
 
-- **Modern Web UI**: Clean interface for querying and document management
-- **Multi-Provider Support**: Switch between Ollama (local), OpenAI, and Anthropic
-- **PDF/Markdown/TXT Ingestion**: Upload and index documents with automatic text extraction and chunking
-- **Hybrid Retrieval**: Combines dense (vector) and sparse (BM25) search with Reciprocal Rank Fusion
-- **Query Rewriting**: Improves retrieval by rephrasing user questions
-- **RAGAs Evaluation**: Measures faithfulness, answer relevancy, context recall, and precision
-- **MLflow Tracking**: Log and compare experiments with different configurations
-- **Docker Ready**: Full containerization with docker-compose
-- **Caching**: LRU caching for embeddings and queries for faster responses
+- **Hybrid Retrieval**: Combines dense vector search (Qdrant) with sparse BM25 keyword matching via Reciprocal Rank Fusion (RRF) — singleton retriever persists BM25 index across requests
+- **RAGAs Evaluation**: Automated quality benchmarking with faithfulness, answer relevancy, context recall, and precision metrics on real evaluation datasets
+- **MLflow Integration**: Evaluation results auto-logged with config params and metrics for experiment comparison
+- **Multi-Provider LLM**: Switch between Ollama (local), OpenAI, Anthropic, and OpenRouter
+- **Modern Web UI**: Chat interface with query, upload, and settings tabs
+- **No-Docker Mode**: Run locally with in-memory Qdrant + sentence-transformers embeddings (no servers needed)
+- **18 Tests Passing**: Loaders, retriever (BM25/RRF), schemas, pipeline, evaluation dataset validation
+- **PDF/Markdown/TXT Ingestion**: Automatic text extraction, chunking (512 chars, 64 overlap), and indexing
+- **Query Rewriting**: LLM-powered query expansion for better retrieval
+- **Caching**: LRU caching for embeddings and queries with TTL
 
 ## Quick Start
 
-### Prerequisites
+### Option A: Run Without Docker (Recommended for Development)
 
-- Docker & docker-compose
-- Python 3.11+
-- 8GB+ RAM (for local Ollama models)
+No Docker, no Ollama, no external servers needed. Uses in-memory Qdrant + sentence-transformers for embeddings + any OpenAI-compatible API for generation.
 
-### Installation
-
-1. Clone the repository:
 ```bash
 git clone https://github.com/axon011/rag-eval-system.git
 cd rag-eval-system
+pip install -r requirements.txt
+cp .env.local .env    # Uses in-memory Qdrant + sentence-transformers
+python -m uvicorn app.main:app --port 8000
 ```
 
-2. Start all services:
+**`.env.local` config:**
+```env
+QDRANT_MODE=memory
+EMBED_PROVIDER=sentence-transformers
+EMBED_MODEL=all-MiniLM-L6-v2
+EMBED_DIM=384
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o
+LLM_API_KEY=your-key-here
+```
+
+### Option B: Run With Docker (Production)
+
+Full containerized setup with persistent Qdrant, Ollama, and MLflow.
+
+**Prerequisites:** Docker & docker-compose, 8GB+ RAM
+
 ```bash
+git clone https://github.com/axon011/rag-eval-system.git
+cd rag-eval-system
 docker-compose up -d
 ```
 
@@ -198,41 +215,6 @@ curl -X POST "http://localhost:8000/query/" \
 - **Model**: Configurable per request
 - **Retrieval Mode**: Hybrid, Dense (semantic), or Sparse (BM25)
 - **Max Chunks**: Number of documents to retrieve (1-20)
-┌─────────────────────────────────────────────────────────────────┐
-│                        Client (curl/UI)                         │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     FastAPI (Port 8000)                         │
-│  ┌─────────────┐              ┌─────────────┐                │
-│  │ /ingest     │              │ /query      │                │
-│  │ (PDF → Qdrant)             │ (Q&A)       │                │
-│  └──────┬──────┘              └──────┬──────┘                │
-└─────────┼─────────────────────────────┼─────────────────────────┘
-          │                             │
-          ▼                             ▼
-┌──────────────────┐         ┌──────────────────────────────┐
-│  PyMuPDF         │         │  RAG Pipeline                │
-│  (PDF → Text)    │         │  ┌────────────────────────┐  │
-└──────────────────┘         │  │ 1. Query Rewrite        │  │
-                            │  │ 2. Hybrid Retrieval    │  │
-                            │  │    - Dense (Qdrant)    │  │
-                            │  │    - Sparse (BM25)     │  │
-                            │  │ 3. Reciprocal Rank     │  │
-                            │  │    Fusion (RRF)       │  │
-                            │  │ 4. Generate Answer     │  │
-                            │  │    (Ollama LLM)       │  │
-                            │  └────────────────────────┘  │
-                            └──────────────────────────────┘
-          │                             │
-          ▼                             ▼
-┌──────────────────┐         ┌──────────────────────────────┐
-│  Qdrant          │         │  Ollama                       │
-│  (Vector Store)  │         │  - nomic-embed-text (embed)  │
-│                  │         │  - llama3.2 (generation)     │
-└──────────────────┘         └──────────────────────────────┘
-```
 
 ## Demo
 
@@ -294,119 +276,41 @@ curl -X POST "http://localhost:8000/query/" \
 # }
 ```
 
-## Key Contributions
+## Technical Deep Dive
 
-This project was enhanced with the following improvements:
+### Hybrid Retrieval Architecture
 
-### Features Added
-- **Modern Web UI**: Full-featured chat interface with Query, Upload, and Settings tabs
-- **Multi-Provider LLM Support**: Switch between Ollama (local), OpenAI, and Anthropic
-- **Configurable Settings**: Model selection, retrieval mode, chunk count via UI
-- **LRU Caching**: Improved performance for repeated queries
-- **Enhanced UX**: Copy, retry, keyboard shortcuts, progress indicators
+The retriever uses a singleton pattern to persist the BM25 index across requests. On startup, it rebuilds the index from chunks stored in Qdrant — no data loss on restart.
 
-### Technical Improvements
-- Added type hints throughout the codebase
-- Implemented proper error handling
-- Added request cancellation (AbortController)
-- Integrated localStorage for settings persistence
-- Dockerized UI folder for production deployment
-
-### What I Learned
-- Building full-stack RAG applications with FastAPI + React-like UI
-- Multi-provider LLM integration (Ollama, OpenAI, Anthropic)
-- Hybrid retrieval (dense + sparse) with reciprocal rank fusion
-- Docker multi-container orchestration
-- Performance optimization with caching strategies
-
-## Features
-
-- **PDF Ingestion**: Upload and index PDF documents with automatic text extraction and chunking
-- **Hybrid Retrieval**: Combines dense (vector) and sparse (BM25) search with Reciprocal Rank Fusion
-- **Query Rewriting**: Improves retrieval by rephrasing user questions
-- **RAGAs Evaluation**: Measures faithfulness, answer relevancy, context recall, and precision
-- **MLflow Tracking**: Log and compare experiments with different configurations
-- **Docker Ready**: Full containerization with docker-compose
-
-## Quick Start
-
-### Prerequisites
-
-- Docker & docker-compose
-- Python 3.11+
-- uv (optional, for local development)
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/your-username/rag-eval-system.git
-cd rag-eval-system
+```
+Query → Embed (sentence-transformers or Ollama)
+  ├── Dense: Qdrant cosine similarity → top-k by semantic match
+  ├── Sparse: BM25 keyword scoring (lowercase tokenized) → top-k by term frequency
+  └── RRF Fusion: score = Σ 1/(60+rank) across both lists → merged top-k
 ```
 
-2. Start all services:
-```bash
-docker-compose up -d
-```
+**Why hybrid beats dense-only:** Dense search catches paraphrases ("car" → "automobile"), while BM25 catches exact keywords ("error 4201" → "4201"). RRF combines both without needing calibrated scores.
 
-3. Verify services:
-```bash
-# Ollama
-curl http://localhost:11434/api/tags
+### Evaluation Pipeline
 
-# Qdrant Dashboard
-open http://localhost:6333/dashboard
-
-# MLflow
-open http://localhost:5000
-
-# FastAPI
-curl http://localhost:8000/health
-```
-
-### Usage
-
-#### 1. Ingest a PDF
+Real evaluation dataset (10 Q&A pairs on LangGraph/RAG topics), scored with RAGAS metrics, results auto-logged to MLflow:
 
 ```bash
-curl -X POST "http://localhost:8000/ingest/" \
-  -F "file=@your-document.pdf"
+python -m eval.run_eval
+# Computes: faithfulness, answer_relevancy, context_recall, context_precision
+# Logs to: MLflow (experiment tracking) + eval/results/run_YYYY-MM-DD.json
 ```
 
-Response:
-```json
-{
-  "status": "success",
-  "chunks_indexed": 42,
-  "embed_model": "nomic-embed-text"
-}
-```
+### Key Engineering Decisions
 
-#### 2. Query the system
-
-```bash
-curl -X POST "http://localhost:8000/query/" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What is the main topic of the document?"}'
-```
-
-Response:
-```json
-{
-  "answer": "The document discusses...",
-  "sources": [
-    {
-      "text": "First few lines of source...",
-      "score": 0.92,
-      "methods": ["dense", "sparse"]
-    }
-  ],
-  "retrieved_chunks": 5,
-  "retrieval_mode": "hybrid",
-  "rewritten_query": "main topic discussed in document",
-  "latency_ms": 1250.5
-}
-```
+| Decision | Why |
+|----------|-----|
+| Singleton Retriever | BM25 index lives in memory — must persist across HTTP requests |
+| In-memory Qdrant mode | Development without Docker; `QDRANT_MODE=memory` env var |
+| sentence-transformers | Local embeddings (384-dim, all-MiniLM-L6-v2) — no Ollama needed |
+| Dynamic vector dimensions | Collection created with actual embedding size, not hardcoded 768 |
+| Lowercase BM25 tokenization | Case-insensitive keyword matching |
+| qdrant-client v1.17+ compat | Uses `query_points()` with fallback to `search()` for older versions |
 
 ## API Endpoints
 
@@ -441,6 +345,11 @@ Environment variables (see `.env.example`):
 | `RETRIEVAL_MODE` | hybrid | dense, sparse, or hybrid |
 | `QUERY_CACHE_ENABLED` | true | Enable query caching |
 | `MLFLOW_TRACKING_URI` | http://mlflow:5000 | MLflow server |
+| `QDRANT_MODE` | server | `memory` for no-Docker mode |
+| `EMBED_PROVIDER` | ollama | `sentence-transformers` for local embeddings |
+| `EMBED_DIM` | 768 | Embedding dimension (384 for MiniLM, 768 for nomic) |
+| `LLM_PROVIDER` | ollama | `openai`, `anthropic`, `openrouter` |
+| `LLM_API_KEY` | - | API key for external LLM providers |
 
 ## Evaluation
 
@@ -669,7 +578,7 @@ To share your local instance temporarily:
    ```bash
    # Windows
    winget install ngrok
-   
+
    # Linux/Mac
    brew install ngrok
    ```

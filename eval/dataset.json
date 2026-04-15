@@ -1,0 +1,52 @@
+[
+  {
+    "question": "What is LangGraph and what problem does it solve?",
+    "answer": "LangGraph is a framework for building stateful, multi-agent applications with LLMs. It solves the problem of orchestrating complex workflows where multiple AI agents need to coordinate, maintain state across steps, and make decisions about which actions to take next.",
+    "context": "LangGraph is a library for building stateful, multi-actor applications with LLMs, used to create agent and multi-agent workflows. It provides a way to define flows that involve cycles, which is essential for most agentic architectures."
+  },
+  {
+    "question": "How does LangGraph handle state management?",
+    "answer": "LangGraph uses a StateGraph where each node receives the current state, performs operations, and returns updates. The state is a TypedDict that gets passed between nodes, with reducers defining how updates are merged. This allows persistent memory across conversation turns.",
+    "context": "In LangGraph, state is defined as a TypedDict and shared across all nodes in the graph. Each node function receives the current state as input and returns a dictionary of updates. Reducers (like operator.add for lists) define how returned values are combined with existing state."
+  },
+  {
+    "question": "What is the difference between edges and conditional edges in LangGraph?",
+    "answer": "Regular edges define a fixed path from one node to the next. Conditional edges use a function to decide which node to go to based on the current state, enabling dynamic routing like deciding whether to call a tool or return a final answer.",
+    "context": "Edges connect nodes in the graph. A normal edge always goes to the same next node. A conditional edge calls a function that examines the state and returns the name of the next node to visit. This is how you implement decision points like should_continue functions."
+  },
+  {
+    "question": "How do you add tool calling to a LangGraph agent?",
+    "answer": "You bind tools to the LLM using bind_tools(), then create a tool node that executes the tools when the LLM requests them. A conditional edge checks if the LLM response contains tool calls and routes to the tool node or to END.",
+    "context": "Tools are added by calling model.bind_tools(tools) and creating a ToolNode. The graph routes between the agent node (which calls the LLM) and the tool node using a conditional edge. The routing function checks if the last message has tool_calls."
+  },
+  {
+    "question": "What is a checkpoint in LangGraph?",
+    "answer": "A checkpoint saves the complete state of the graph at each step, enabling time travel (going back to a previous state), human-in-the-loop interrupts, and conversation persistence across sessions. It uses a checkpointer like MemorySaver or SqliteSaver.",
+    "context": "Checkpointing in LangGraph saves a snapshot of the graph state after each node execution. The MemorySaver stores checkpoints in memory. SqliteSaver persists them to a database. Checkpoints enable features like rewinding to previous states and resuming interrupted workflows."
+  },
+  {
+    "question": "How does RAG retrieval work with vector databases?",
+    "answer": "Documents are split into chunks, each chunk is converted into a vector embedding, and stored in a vector database like Qdrant. At query time, the question is also embedded and the database finds the most similar document vectors using cosine similarity, returning the top-k most relevant chunks.",
+    "context": "RAG retrieval involves embedding documents and queries into the same vector space. The vector database performs approximate nearest neighbor search to find chunks whose embeddings are closest to the query embedding. Common similarity metrics include cosine similarity and dot product."
+  },
+  {
+    "question": "What is hybrid retrieval and why is it better than dense-only search?",
+    "answer": "Hybrid retrieval combines dense vector search (semantic similarity) with sparse keyword search (BM25). Dense search catches paraphrases and semantic matches, while BM25 catches exact keywords and rare terms. Reciprocal Rank Fusion merges both result lists into a single ranked output.",
+    "context": "Dense retrieval uses vector embeddings to capture semantic meaning but can miss exact keyword matches. BM25 is a statistical keyword-based method that excels at matching specific terms. Hybrid retrieval combines both using fusion methods like Reciprocal Rank Fusion (RRF), where the final score is computed as 1/(k+rank) summed across both result lists."
+  },
+  {
+    "question": "What metrics does RAGAS use to evaluate RAG systems?",
+    "answer": "RAGAS uses four main metrics: faithfulness (is the answer grounded in the retrieved context), answer relevancy (does the answer address the question), context precision (are the retrieved chunks relevant), and context recall (were all relevant chunks retrieved).",
+    "context": "RAGAS evaluates RAG pipelines with metrics including faithfulness, which measures whether the generated answer is supported by the retrieved context; answer relevancy, which measures how well the answer addresses the question; context precision, which measures the proportion of retrieved chunks that are relevant; and context recall, which measures whether all ground-truth relevant information was retrieved."
+  },
+  {
+    "question": "What is chunking and how does chunk size affect retrieval quality?",
+    "answer": "Chunking splits documents into smaller pieces for embedding and retrieval. Smaller chunks give more precise retrieval but lose context. Larger chunks preserve context but may include irrelevant information. Typical sizes range from 256 to 1024 tokens with overlap between chunks.",
+    "context": "Document chunking divides text into segments that can be independently embedded and retrieved. Chunk size affects the granularity of retrieval. Small chunks (128-256 tokens) enable precise matching but may miss surrounding context. Large chunks (512-1024 tokens) provide more context but can dilute relevance. Overlapping chunks help preserve context at boundaries."
+  },
+  {
+    "question": "How does Reciprocal Rank Fusion work?",
+    "answer": "RRF assigns each document a score based on its rank position in each result list using the formula 1/(k+rank), where k is a constant (typically 60). Scores from all lists are summed, and documents are re-ranked by their combined score. This gives weight to documents that appear high in multiple lists.",
+    "context": "Reciprocal Rank Fusion (RRF) is a method for combining multiple ranked lists. For each document, the RRF score is calculated as the sum of 1/(k+rank_i) across all lists where it appears. The constant k (default 60) controls how much top-ranked items are favored. Documents are then sorted by their combined RRF score."
+  }
+]

@@ -18,56 +18,18 @@ class EvalDataset:
             self.dataset = self._get_default_dataset()
     
     def _get_default_dataset(self) -> List[Dict[str, str]]:
+        # Try loading from dataset.json first
+        json_path = os.path.join(os.path.dirname(__file__), "dataset.json")
+        if os.path.exists(json_path):
+            with open(json_path, 'r') as f:
+                return json.load(f)
+
+        # Fallback — should never reach here if dataset.json exists
         return [
             {
-                "question": "What is the main topic of this document?",
-                "answer": "The main topic is [extract from your document]",
-                "context": "The relevant context from the document"
-            },
-            {
-                "question": "What are the key findings presented?",
-                "answer": "The key findings are [extract from your document]",
-                "context": "The relevant context from the document"
-            },
-            {
-                "question": "What methodology was used?",
-                "answer": "The methodology used was [extract from your document]",
-                "context": "The relevant context from the document"
-            },
-            {
-                "question": "What are the main conclusions?",
-                "answer": "The main conclusions are [extract from your document]",
-                "context": "The relevant context from the document"
-            },
-            {
-                "question": "What data was analyzed in this study?",
-                "answer": "The data analyzed was [extract from your document]",
-                "context": "The relevant context from the document"
-            },
-            {
-                "question": "What are the limitations mentioned?",
-                "answer": "The limitations mentioned are [extract from your document]",
-                "context": "The relevant context from the document"
-            },
-            {
-                "question": "What are the recommendations provided?",
-                "answer": "The recommendations provided are [extract from your document]",
-                "context": "The relevant context from the document"
-            },
-            {
-                "question": "What previous research is referenced?",
-                "answer": "Previous research referenced includes [extract from your document]",
-                "context": "The relevant context from the document"
-            },
-            {
-                "question": "What are the implications of this work?",
-                "answer": "The implications of this work are [extract from your document]",
-                "context": "The relevant context from the document"
-            },
-            {
-                "question": "What future work is suggested?",
-                "answer": "Future work suggested includes [extract from your document]",
-                "context": "The relevant context from the document"
+                "question": "What is LangGraph and what problem does it solve?",
+                "answer": "LangGraph is a framework for building stateful, multi-agent applications with LLMs.",
+                "context": "LangGraph is a library for building stateful, multi-actor applications with LLMs, used to create agent and multi-agent workflows."
             }
         ]
     

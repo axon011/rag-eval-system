@@ -18,7 +18,7 @@ class RAGPipeline:
         max_chunks: int = 5
     ):
         self.embedder = embedder or Embedder()
-        self.retriever = retriever or Retriever()
+        self.retriever = retriever or Retriever.get_instance()
         self.generator = generator or Generator()
         self.retrieval_mode = retrieval_mode or os.getenv("RETRIEVAL_MODE", "hybrid")
         self.model = model
