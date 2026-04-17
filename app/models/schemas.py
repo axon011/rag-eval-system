@@ -23,10 +23,10 @@ class QueryRequest(BaseModel):
     rewrite_query: bool = Field(
         default=True, description="Whether to rewrite the query for better retrieval"
     )
-    model: Optional[str] = Field(default="llama3.2", description="Model to use for generation")
-    provider: Optional[str] = Field(default="ollama", description="LLM provider: ollama, openai, anthropic")
-    api_key: Optional[str] = Field(default=None, description="API key for external providers")
-    retrieval_mode: Optional[str] = Field(default="hybrid", description="Retrieval mode: hybrid, dense, sparse")
+    model: Optional[str] = Field(default=None, description="Model; falls back to LLM_MODEL env var")
+    provider: Optional[str] = Field(default=None, description="LLM provider (ollama/openai/anthropic); falls back to LLM_PROVIDER env var")
+    api_key: Optional[str] = Field(default=None, description="API key; falls back to LLM_API_KEY env var")
+    retrieval_mode: Optional[str] = Field(default=None, description="Retrieval mode (hybrid/dense/sparse); falls back to RETRIEVAL_MODE env var")
     max_chunks: Optional[int] = Field(default=5, description="Maximum number of chunks to retrieve")
 
 
