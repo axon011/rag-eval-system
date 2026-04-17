@@ -23,6 +23,11 @@ dependencies = [
     "python-dotenv==1.0.1",
     "tqdm==4.66.0",
     "datasets==2.18.0",
+    "sentence-transformers==3.0.1",
+    "cachetools==5.3.3",
+    "python-json-logger==2.0.7",
+    "aiofiles==23.2.1",
+    "tenacity==8.5.0",
 ]
 
 [build-system]

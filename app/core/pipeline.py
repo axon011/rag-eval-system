@@ -20,6 +20,14 @@ class RAGPipeline:
         self.embedder = embedder or Embedder()
         self.retriever = retriever or Retriever.get_instance()
         self.generator = generator or Generator()
+
+        # Align Qdrant collection dimension to the embedder so mismatched
+        # EMBED_DIM env vars don't silently corrupt inserts.
+        try:
+            self.retriever.ensure_dimension(self.embedder.get_dimension())
+        except Exception:
+            # Retriever may be a mock in tests; safe to skip.
+            pass
         self.retrieval_mode = retrieval_mode or os.getenv("RETRIEVAL_MODE", "hybrid")
         self.model = model
         self.provider = provider

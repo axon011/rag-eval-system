@@ -32,13 +32,26 @@ class QueryCache:
         self.hits = 0
         self.misses = 0
 
-    def _hash(self, question: str) -> str:
-        """Generate hash for question."""
-        return hashlib.sha256(question.lower().strip().encode()).hexdigest()
+    def _hash(
+        self,
+        question: str,
+        provider: str = "",
+        model: str = "",
+        retrieval_mode: str = "",
+    ) -> str:
+        """Hash question plus config so different models don't share cache entries."""
+        payload = f"{question.lower().strip()}|{provider}|{model}|{retrieval_mode}"
+        return hashlib.sha256(payload.encode()).hexdigest()
 
-    def get(self, question: str) -> Optional[CachedResponse]:
+    def get(
+        self,
+        question: str,
+        provider: str = "",
+        model: str = "",
+        retrieval_mode: str = "",
+    ) -> Optional[CachedResponse]:
         """Get response from cache if not expired."""
-        key = self._hash(question)
+        key = self._hash(question, provider, model, retrieval_mode)
 
         if key in self.cache:
             if time.time() - self.timestamps.get(key, 0) < self.ttl:
@@ -52,9 +65,16 @@ class QueryCache:
         self.misses += 1
         return None
 
-    def set(self, question: str, response: CachedResponse):
+    def set(
+        self,
+        question: str,
+        response: CachedResponse,
+        provider: str = "",
+        model: str = "",
+        retrieval_mode: str = "",
+    ):
         """Store response in cache."""
-        key = self._hash(question)
+        key = self._hash(question, provider, model, retrieval_mode)
         self.cache[key] = response
         self.timestamps[key] = time.time()
 

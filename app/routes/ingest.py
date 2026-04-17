@@ -39,6 +39,10 @@ async def ingest_document(file: UploadFile = File(...)):
 
         result = pipeline.ingest_documents(chunks)
 
+        # New corpus = old query answers may be wrong. Invalidate query cache.
+        from app.cache import query_cache
+        query_cache.clear()
+
         return IngestResponse(**result)
 
     except HTTPException:
