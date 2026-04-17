@@ -1,16 +1,9 @@
 name: Deploy to Azure Container Apps
 
+# Manual trigger only — enable push triggers once AZURE_CREDENTIALS and ACR secrets
+# are configured. Without them, auto-deploy on every push just fails the pipeline.
 on:
   workflow_dispatch:
-  push:
-    branches: [master, main]
-    paths:
-      - 'app/**'
-      - 'ui/**'
-      - 'eval/**'
-      - 'requirements.txt'
-      - 'Dockerfile'
-      - '.github/workflows/deploy-azure.yml'
 
 env:
   AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
