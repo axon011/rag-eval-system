@@ -1,0 +1,51 @@
+name: rag-eval-system
+region: fra
+services:
+  - name: api
+    # Point this at your own fork if different
+    github:
+      repo: axon011/rag-eval-system
+      branch: master
+      deploy_on_push: true
+    dockerfile_path: Dockerfile
+    http_port: 8000
+    instance_count: 1
+    # basic-s gives 1 GB RAM which sentence-transformers + FastAPI comfortably fit in.
+    # Step down to basic-xxs ($5/mo, 512 MB) only if you swap the embedder for an API.
+    instance_size_slug: basic-s
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 30
+      period_seconds: 30
+      timeout_seconds: 10
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: LLM_PROVIDER
+        value: openai
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: EMBED_PROVIDER
+        value: sentence-transformers
+      - key: EMBED_MODEL
+        value: all-MiniLM-L6-v2
+      - key: QDRANT_MODE
+        value: memory
+      - key: RETRIEVAL_MODE
+        value: hybrid
+      - key: TOP_K
+        value: "5"
+      - key: CHUNK_SIZE
+        value: "1200"
+      - key: CHUNK_OVERLAP
+        value: "150"
+      - key: QUERY_CACHE_ENABLED
+        value: "true"
+      - key: CORS_ORIGINS
+        value: "*"
+      # Secret — set via `doctl apps config set` or the DO UI. Do NOT commit.
+      - key: LLM_API_KEY
+        scope: RUN_TIME
+        type: SECRET
