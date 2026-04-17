@@ -12,8 +12,8 @@ class RAGPipeline:
         retriever: Optional[Retriever] = None,
         generator: Optional[Generator] = None,
         retrieval_mode: Optional[str] = None,
-        model: str = "llama3.2",
-        provider: str = "ollama",
+        model: Optional[str] = None,
+        provider: Optional[str] = None,
         api_key: Optional[str] = None,
         max_chunks: int = 5
     ):
@@ -29,9 +29,12 @@ class RAGPipeline:
             # Retriever may be a mock in tests; safe to skip.
             pass
         self.retrieval_mode = retrieval_mode or os.getenv("RETRIEVAL_MODE", "hybrid")
-        self.model = model
-        self.provider = provider
-        self.api_key = api_key
+        # Fall back to env-driven defaults so a caller that passes nothing
+        # still uses LLM_PROVIDER / LLM_MODEL / LLM_API_KEY instead of
+        # silently forcing Ollama.
+        self.model = model or os.getenv("LLM_MODEL", "llama3.2")
+        self.provider = provider or os.getenv("LLM_PROVIDER", "ollama")
+        self.api_key = api_key or os.getenv("LLM_API_KEY")
         self.max_chunks = max_chunks
 
     def ingest_documents(self, chunks: List[str]) -> Dict[str, Any]:
