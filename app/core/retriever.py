@@ -1,20 +1,25 @@
 import os
+import threading
 from typing import List, Dict, Any, Optional
 import uuid
 import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
+import re
 from rank_bm25 import BM25Okapi
 
 
 class Retriever:
     _instance: Optional["Retriever"] = None
+    _instance_lock = threading.Lock()
 
     @classmethod
     def get_instance(cls) -> "Retriever":
         """Singleton — keeps BM25 index alive across requests."""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._instance_lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     def __init__(
@@ -38,6 +43,8 @@ class Retriever:
 
         self.bm25_index: Optional[BM25Okapi] = None
         self.chunks: List[str] = []
+        # Serializes add_documents + BM25 rebuilds across concurrent /ingest requests.
+        self._write_lock = threading.Lock()
 
         # Rebuild BM25 index from existing Qdrant data on startup
         self._rebuild_bm25_from_qdrant()
@@ -56,33 +63,58 @@ class Retriever:
                 )
             )
 
+    def ensure_dimension(self, vector_size: int):
+        """Recreate collection if existing vector size doesn't match.
+
+        Called by the pipeline once it knows the embedder's real dimension.
+        Prevents the silent-dimension-mismatch crash at insert time.
+        """
+        try:
+            info = self.client.get_collection(self.collection_name)
+            current = info.config.params.vectors.size
+        except Exception:
+            current = None
+
+        if current == vector_size:
+            return
+        if current is not None:
+            self.client.delete_collection(self.collection_name)
+        self._ensure_collection(vector_size=vector_size)
+
     def _generate_id(self, text: str) -> str:
         return str(uuid.uuid4())
 
     def add_documents(self, chunks: List[str], vectors: List[List[float]]):
-        points = []
-        self.chunks.extend(chunks)
-        
-        for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
-            point = PointStruct(
-                id=str(uuid.uuid4()),
-                vector=vector,
-                payload={
-                    "text": chunk,
-                    "chunk_index": i
-                }
+        with self._write_lock:
+            # Globally-unique chunk_index so multi-ingest calls don't collide.
+            base_offset = len(self.chunks)
+            points = []
+            for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
+                point = PointStruct(
+                    id=str(uuid.uuid4()),
+                    vector=vector,
+                    payload={
+                        "text": chunk,
+                        "chunk_index": base_offset + i,
+                    }
+                )
+                points.append(point)
+
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=points,
             )
-            points.append(point)
-        
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=points
-        )
-        
-        self._build_bm25_index(self.chunks)
+
+            self.chunks.extend(chunks)
+            self._build_bm25_index(self.chunks)
+
+    @staticmethod
+    def _tokenize(text: str) -> List[str]:
+        """Lowercase + strip punctuation so 'Document.' and 'document' match."""
+        return re.findall(r"[a-z0-9]+", text.lower())
 
     def _build_bm25_index(self, chunks: List[str]):
-        tokenized_chunks = [chunk.lower().split() for chunk in chunks]
+        tokenized_chunks = [self._tokenize(chunk) for chunk in chunks]
         self.bm25_index = BM25Okapi(tokenized_chunks)
 
     def _rebuild_bm25_from_qdrant(self):
@@ -153,22 +185,26 @@ class Retriever:
         ]
 
     def sparse_retrieval(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        if not self.bm25_index:
+        if not self.bm25_index or not self.chunks:
             return []
-        
+
         k = top_k or self.top_k
-        
-        scores = self.bm25_index.get_scores(query.lower().split())
+        tokenized_query = self._tokenize(query)
+        if not tokenized_query:
+            # All-stopword / all-punctuation queries have nothing to score against.
+            return []
+
+        scores = self.bm25_index.get_scores(tokenized_query)
         top_indices = np.argsort(scores)[::-1][:k]
-        
+
         return [
             {
                 "text": self.chunks[i],
                 "score": float(scores[i]),
-                "chunk_index": i,
+                "chunk_index": int(i),
                 "method": "sparse"
             }
-            for i in top_indices if i < len(self.chunks)
+            for i in top_indices if i < len(self.chunks) and scores[i] > 0
         ]
 
     def hybrid_retrieval(self, query_vector: List[float], query: str, top_k: int = 5) -> List[Dict[str, Any]]:

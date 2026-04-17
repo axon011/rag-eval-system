@@ -19,3 +19,5 @@ datasets==2.18.0
 cachetools==5.3.3
 python-json-logger==2.0.7
 aiofiles==23.2.1
+sentence-transformers==3.0.1
+tenacity==8.5.0

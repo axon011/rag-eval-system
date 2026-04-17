@@ -31,7 +31,7 @@ class Embedder:
         api_key: str = None,
         use_cache: bool = True,
     ):
-        self.base_url = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
+        self.base_url = base_url or os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
         self.model = model or os.getenv("EMBED_MODEL", "nomic-embed-text")
         self.provider = provider or os.getenv("EMBED_PROVIDER", "ollama")
         self.api_key = api_key or os.getenv("EMBED_API_KEY")
@@ -60,12 +60,14 @@ class Embedder:
         if self.use_cache:
             from app.cache import embedding_cache
 
-            cached = embedding_cache.get(text)
+            # Include model name so swapping providers doesn't return stale vectors.
+            cache_key = f"{self.provider}:{self.model}:{text}"
+            cached = embedding_cache.get(cache_key)
             if cached is not None:
                 return cached
 
             embedding = self.embeddings.embed_query(text)
-            embedding_cache.set(text, embedding)
+            embedding_cache.set(cache_key, embedding)
             return embedding
 
         return self.embeddings.embed_query(text)
@@ -77,9 +79,17 @@ class Embedder:
         return self.provider
 
     def get_dimension(self) -> int:
-        """Return embedding dimension. Probes with a test query if unknown."""
+        """Return embedding dimension, using model metadata when possible.
+
+        SentenceTransformer exposes it directly; OpenAI/Ollama fall back to a
+        single probe (uncached so we don't pollute the cache with 'test')."""
         if self._dim:
             return self._dim
-        test = self.embeddings.embed_query("test")
+        # Try SBERT's native attribute first.
+        if hasattr(self.embeddings, "dim"):
+            self._dim = self.embeddings.dim
+            return self._dim
+        # Last resort: uncached probe — bypass the cache path intentionally.
+        test = self.embeddings.embed_query("__dim_probe__")
         self._dim = len(test)
         return self._dim
