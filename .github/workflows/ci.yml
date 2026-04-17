@@ -84,13 +84,30 @@ jobs:
       with:
         context: .
         push: false
+        load: true
         tags: rag-eval-system:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
-    
+
     - name: Run container health check
       run: |
-        docker run -d --name test-rag -p 8000:8000 rag-eval-system:latest
-        sleep 10
+        docker run -d --name test-rag -p 8000:8000 \
+          -e QDRANT_MODE=memory \
+          -e LLM_API_KEY=ci-smoke-test \
+          -e LLM_PROVIDER=openai \
+          rag-eval-system:latest
+
+        # Poll /health instead of blind sleep — tolerates slow first starts.
+        for i in {1..30}; do
+          if curl -fsS http://localhost:8000/health > /dev/null; then
+            echo "Container healthy after ${i}s"
+            exit_code=0
+            break
+          fi
+          sleep 2
+        done
+        exit_code=${exit_code:-1}
+
         docker logs test-rag
-        docker stop test-rag
+        docker stop test-rag || true
+        exit $exit_code
