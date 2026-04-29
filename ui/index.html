@@ -187,7 +187,8 @@
         let isLoading = false;
         let abortController = null;
         
-        // Settings state
+        // Settings state — fetch server defaults from /query/config so the UI
+        // matches whatever LLM_PROVIDER / LLM_MODEL the server was started with.
         let settings = {
             provider: localStorage.getItem('provider') || 'ollama',
             apiKey: localStorage.getItem('apiKey') || '',
@@ -195,6 +196,17 @@
             retrievalMode: localStorage.getItem('retrievalMode') || 'hybrid',
             maxChunks: parseInt(localStorage.getItem('maxChunks')) || 5
         };
+        // Auto-detect server config on first visit (no localStorage yet)
+        if (!localStorage.getItem('provider')) {
+            fetch('/query/config').then(r => r.json()).then(cfg => {
+                if (cfg.llm_model) { settings.model = cfg.llm_model; localStorage.setItem('model', cfg.llm_model); }
+                // Map known base URLs to providers
+                const provider = cfg.retrieval_mode ? 'openai' : 'ollama';
+                settings.provider = 'openai';
+                localStorage.setItem('provider', 'openai');
+                initSettings();
+            }).catch(() => {});
+        }
 
         // Initialize settings UI
         function initSettings() {
