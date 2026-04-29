@@ -48,5 +48,205 @@
     "question": "How does Reciprocal Rank Fusion work?",
     "answer": "RRF assigns each document a score based on its rank position in each result list using the formula 1/(k+rank), where k is a constant (typically 60). Scores from all lists are summed, and documents are re-ranked by their combined score. This gives weight to documents that appear high in multiple lists.",
     "context": "Reciprocal Rank Fusion (RRF) is a method for combining multiple ranked lists. For each document, the RRF score is calculated as the sum of 1/(k+rank_i) across all lists where it appears. The constant k (default 60) controls how much top-ranked items are favored. Documents are then sorted by their combined RRF score."
+  },
+  {
+    "question": "What is faithfulness in RAGAS and how is it measured?",
+    "answer": "Faithfulness measures whether the generated answer is grounded in the retrieved context. RAGAS extracts atomic claims from the answer and checks each one against the context. The score is the fraction of claims supported by the retrieved chunks.",
+    "context": "RAGAS faithfulness is computed by first decomposing the generated answer into individual factual claims, then using an LLM judge to verify whether each claim can be inferred from the retrieved context. The metric returns the proportion of supported claims, on a scale from 0 to 1."
+  },
+  {
+    "question": "How does answer relevancy differ from faithfulness?",
+    "answer": "Answer relevancy measures whether the generated answer addresses the question, while faithfulness measures whether it is supported by the retrieved context. An answer can be faithful but irrelevant (hedging) or relevant but unfaithful (hallucinated).",
+    "context": "Faithfulness asks: is the answer grounded in the retrieved evidence? Answer relevancy asks: does the answer actually address the user's question? RAGAS computes answer relevancy by generating synthetic questions from the answer and measuring their similarity to the original question."
+  },
+  {
+    "question": "What is context precision and why does it matter?",
+    "answer": "Context precision measures the proportion of retrieved chunks that are actually relevant to the question. Low context precision means the retriever surfaces noise that distracts the LLM and risks hallucinations. It is the retrieval-side counterpart to faithfulness on the generation side.",
+    "context": "Context precision in RAGAS evaluates how relevant each retrieved chunk is to the input question, weighted by rank. The metric ranges from 0 to 1; high precision means the top-ranked retrieved contexts are truly useful for answering the question."
+  },
+  {
+    "question": "What is context recall and how is it computed?",
+    "answer": "Context recall measures whether all the information needed to answer the question was retrieved. It compares the ground-truth answer against the retrieved context and asks: for each claim in the ground truth, was supporting evidence retrieved?",
+    "context": "Context recall is calculated by decomposing the reference answer into individual statements and checking, for each one, whether supporting context was present in the retrieved chunks. It directly measures retrieval coverage and complements context precision."
+  },
+  {
+    "question": "Why use BM25 alongside dense embeddings instead of relying on dense alone?",
+    "answer": "Dense embeddings can miss exact keyword matches such as part numbers, version strings, or rare technical terms. BM25 excels at exact-token matching and provides a counterweight, so when dense fails on a specific identifier the keyword path catches it.",
+    "context": "Dense retrieval may fail on out-of-vocabulary terms, exact identifiers, or domain-specific tokens that the embedding model has not seen at scale. BM25 is a token-overlap based method that performs reliably on such queries. Hybrid setups exploit both signals for robust recall."
+  },
+  {
+    "question": "How does Qdrant differ from FAISS or Chroma?",
+    "answer": "Qdrant is a production-oriented vector database with payload filtering, distributed deployment, and a REST/gRPC API. FAISS is a library for fast similarity search but lacks persistence and metadata filtering. Chroma is lightweight and embedded, easier to start with but less production-hardened.",
+    "context": "Qdrant offers a Rust-based vector database with HNSW indexing, strict filtering, snapshots, and clustering support. FAISS is Meta's library focused on raw search speed without server features. Chroma provides an embedded SQLite-backed vector store optimized for local prototyping."
+  },
+  {
+    "question": "What is HNSW and why is it used in vector databases?",
+    "answer": "HNSW (Hierarchical Navigable Small World) is an approximate nearest neighbor algorithm that builds a multi-layer graph of vectors. Search starts at the top layer with long-range jumps and refines downward, achieving sub-linear query time with high recall.",
+    "context": "HNSW indexes vectors by constructing layered proximity graphs. Higher layers have sparser connections for coarse navigation, lower layers are denser for fine-grained search. Most production vector databases including Qdrant and Weaviate use HNSW as their default index."
+  },
+  {
+    "question": "What does cosine similarity measure between two embeddings?",
+    "answer": "Cosine similarity measures the angle between two vectors, ignoring their magnitudes. It returns a value between -1 and 1, where 1 means identical direction. For normalized embeddings it is equivalent to the dot product and is the standard similarity metric for semantic search.",
+    "context": "Cosine similarity computes the dot product of two vectors divided by the product of their L2 norms. It is direction-invariant to magnitude, which matters for embeddings since absolute vector length carries no semantic meaning."
+  },
+  {
+    "question": "Why are embeddings often normalized to unit length before storage?",
+    "answer": "Normalizing embeddings to unit length lets the vector database use dot product as an exact equivalent for cosine similarity, which is faster than computing cosine on the fly. It also stabilizes similarity scores across documents of different lengths.",
+    "context": "Unit-length normalization (L2 normalization) divides each embedding by its norm. With normalized vectors, cosine similarity equals the dot product, allowing the database to use the cheaper dot-product kernel. Many embedding APIs (OpenAI, sentence-transformers) return pre-normalized vectors."
+  },
+  {
+    "question": "What is sentence-transformers all-MiniLM-L6-v2 and when should you use it?",
+    "answer": "all-MiniLM-L6-v2 is a small, fast sentence-transformer producing 384-dimensional embeddings. It runs cheaply on CPU, is suitable for local prototyping and modest-scale RAG, and offers a strong baseline. For production-quality semantic search, larger models like bge-large or proprietary APIs may outperform it.",
+    "context": "all-MiniLM-L6-v2 is a 22M-parameter MiniLM checkpoint fine-tuned on sentence-pair tasks. It produces 384-dimensional embeddings suitable for semantic search and similarity ranking. Its small footprint makes it the standard low-cost embedding model for self-hosted RAG."
+  },
+  {
+    "question": "What does it mean to embed a query and a document into the same vector space?",
+    "answer": "Both query and document are passed through the same embedding model, producing vectors that live in the same semantic space. Vectors close together correspond to texts that mean similar things, regardless of word overlap. This shared space is what enables semantic retrieval.",
+    "context": "Embedding models are trained so that semantically related sentences map to nearby vectors. By using the same model for both indexing and querying, the system ensures vectors are directly comparable. This is the foundation of dense retrieval."
+  },
+  {
+    "question": "What is query rewriting and why does it improve RAG?",
+    "answer": "Query rewriting reformulates the user's question into a form better suited for retrieval, expanding ambiguous phrases or stripping conversational filler. A rewritten query often matches relevant chunks more reliably, especially in multi-turn dialogues where context is implicit.",
+    "context": "Query rewriting uses an LLM to transform the original user question, often by adding clarifying terms, resolving pronouns from chat history, or generating multiple paraphrases. The rewritten queries drive retrieval and frequently boost recall on conversational or under-specified inputs."
+  },
+  {
+    "question": "Why does pre-computing embeddings asynchronously help latency?",
+    "answer": "Embedding computation is the slowest step in ingestion. By moving it to a background worker that processes documents as soon as they arrive, the user-facing ingest endpoint returns immediately and queries against newly added documents are not blocked behind a synchronous batch job.",
+    "context": "Asynchronous embedding pre-computation decouples document arrival from vector indexing. A background worker pulls newly uploaded chunks from a queue and writes their embeddings to the vector database without blocking the ingest API. This pattern keeps p95 ingest latency low even on large uploads."
+  },
+  {
+    "question": "What is semantic caching and how does it differ from a regular query cache?",
+    "answer": "A regular cache keys on exact string match. Semantic caching keys on the embedding of the query, so paraphrased or near-duplicate questions hit the same cached answer. This catches more reuse opportunities at the cost of needing an embedding lookup before the cache check.",
+    "context": "Semantic cache implementations store embeddings of past queries alongside their cached responses. On a new query, the system embeds it and searches the cache for a vector whose similarity exceeds a threshold (e.g. 0.95). Hits return the cached answer; misses fall through to the full pipeline."
+  },
+  {
+    "question": "How do you measure p95 latency for a RAG query?",
+    "answer": "Run a representative workload of queries, record the end-to-end response time for each, and take the 95th percentile. P95 captures the typical worst-case experience; p50 (median) hides tail latency that real users feel.",
+    "context": "Latency percentiles are computed by sorting recorded query durations and reading off the value at a given percentile rank. p50 is the median, p95 the value below which 95% of queries fall, p99 the tail-latency indicator. Production RAG systems track p95 because it represents perceived responsiveness for most users."
+  },
+  {
+    "question": "What is MLflow used for in an LLM project?",
+    "answer": "MLflow tracks experiments, logging parameters, metrics, and artifacts so different prompt versions, retrieval configs, or model choices can be compared side-by-side. It also stores model versions and serves a UI to browse runs.",
+    "context": "MLflow provides experiment tracking, model registry, and serving capabilities. In LLM projects it is commonly used to record evaluation metrics (faithfulness, relevance) alongside the prompt template, retrieval mode, chunk size, and model name used for each run, enabling regression detection across iterations."
+  },
+  {
+    "question": "How would you detect a regression in RAG quality between two MLflow runs?",
+    "answer": "Compare the latest run's metrics against a baseline run, typically the last passing run on main. If any RAGAs metric drops by more than a configured threshold (e.g. 5%), flag the run as a regression and fail CI. Track the worst metric, not just the average.",
+    "context": "Regression detection compares evaluation metrics across runs. A simple rule: for each tracked metric, compute the percentage drop versus baseline; if any drop exceeds the threshold, mark a regression. CI pipelines can be configured to fail on regression so prompt changes don't silently degrade quality."
+  },
+  {
+    "question": "Why instrument LLM calls with tracing?",
+    "answer": "Tracing captures the full input/output and timing of each LLM call. When a user reports a wrong answer, the trace lets you replay the exact prompt, retrieved chunks, and model response to diagnose whether the failure was retrieval, generation, or the prompt template.",
+    "context": "LLM tracing tools like Langfuse or LangSmith log every call's prompt, response, retrieved context, latency, and cost. Traces are linked by session and trace IDs, making it possible to reconstruct conversations and debug specific failure modes. Tracing also feeds dashboards on cost and quality drift."
+  },
+  {
+    "question": "What's the role of structured outputs in agent reliability?",
+    "answer": "Forcing the model to return structured outputs (Pydantic schemas, JSON schemas) prevents free-form prose drift and makes downstream parsing deterministic. The model can't hallucinate fields the schema does not allow, which closes off a class of agent failures.",
+    "context": "Structured outputs constrain LLM responses to a typed schema, validated either by the API (function calling) or by a Pydantic parser. This makes agent loops robust to free-form drift and ensures every step produces fields that the next step can consume without parsing exceptions."
+  },
+  {
+    "question": "What is the difference between fine-tuning and RAG for adding knowledge to an LLM?",
+    "answer": "Fine-tuning bakes new knowledge into the model weights, requiring training data and producing static knowledge that ages. RAG keeps knowledge external in a vector database, retrieved at query time, and stays current as the corpus changes without retraining.",
+    "context": "Fine-tuning updates a model's parameters using supervised examples, making it suitable for adapting style or learning task-specific behavior. RAG injects knowledge through retrieved context at inference time, keeping the model frozen and the knowledge base mutable. Most production document-QA systems prefer RAG for freshness and auditability."
+  },
+  {
+    "question": "When does fine-tuning make more sense than RAG?",
+    "answer": "Fine-tuning is preferable when you need the model to follow a specific style, format, or domain-specific reasoning pattern that retrieval cannot teach. It also helps when the relevant context is too large to fit in a prompt or when latency budgets cannot accommodate retrieval.",
+    "context": "Use fine-tuning for style adaptation, learned classifiers, structured-output adherence, or compressing many in-context examples into the model itself. Reserve RAG for factual recall over a large or changing corpus where freshness and citation matter."
+  },
+  {
+    "question": "What is QLoRA and why is it efficient?",
+    "answer": "QLoRA combines 4-bit quantization of the base model with LoRA adapters. The frozen base sits in 4-bit precision while small low-rank adapters get trained in higher precision, dramatically reducing GPU memory needs while preserving most of the quality of full fine-tuning.",
+    "context": "QLoRA loads a pretrained model in 4-bit (NF4 quantization) and trains low-rank LoRA adapters on top. Memory usage drops by an order of magnitude compared to full fine-tuning, allowing 7B+ models to fine-tune on a single consumer GPU. Quality is typically within 1-2% of full-precision fine-tuning."
+  },
+  {
+    "question": "What does PEFT stand for and what does it enable?",
+    "answer": "PEFT stands for Parameter-Efficient Fine-Tuning. It refers to methods that update only a small subset of parameters (LoRA adapters, prefix tokens, prompt embeddings) instead of all model weights, enabling fine-tuning on modest hardware and cheap storage of many task-specific variants.",
+    "context": "Parameter-Efficient Fine-Tuning includes LoRA, QLoRA, prefix tuning, and prompt tuning. These methods train a small number of additional parameters while keeping the base model frozen. The resulting adapters are typically a few megabytes, allowing one base model to serve many specialized variants."
+  },
+  {
+    "question": "Why use Pydantic for LLM output validation?",
+    "answer": "Pydantic enforces a typed schema on LLM responses, validating types, ranges, enums, and required fields automatically. Validation errors are caught immediately and can trigger a retry or repair step, keeping malformed outputs from propagating into downstream code.",
+    "context": "Pydantic models provide runtime type checking and validation. When applied to LLM outputs (parsed from JSON), they catch missing fields, wrong types, and constraint violations. Combined with function calling or structured-output APIs, they form the backbone of reliable agent and pipeline code."
+  },
+  {
+    "question": "What is the role of the Planner agent in a multi-agent pipeline?",
+    "answer": "The Planner agent decomposes a high-level objective into ordered sub-tasks or sub-questions, each addressable by a downstream specialist agent. A clear Planner schema is often more important to system quality than which model the downstream agents use.",
+    "context": "Planner agents perform task decomposition, breaking an open-ended goal into a structured plan that the rest of the pipeline can execute. They emit typed sub-tasks (sub-questions, action steps) that the Researcher, Writer, or other agents consume. Planner output schema directly bounds the pipeline's reasoning shape."
+  },
+  {
+    "question": "What does the Researcher agent typically do in a research pipeline?",
+    "answer": "The Researcher fans out per sub-question to one or more sources, gathers raw evidence, and synthesizes a partial answer for that sub-question. It is the bridge between abstract sub-tasks from the Planner and concrete cited facts the Writer can compose into a final report.",
+    "context": "The Researcher agent receives sub-questions from the Planner, queries multiple knowledge sources (web search, vector database, internal APIs), and returns evidence with citations. In parallel pipelines it runs sub-questions concurrently to minimize wall-clock time."
+  },
+  {
+    "question": "What does the Writer agent do at the end of a pipeline?",
+    "answer": "The Writer composes the final output from the Researcher's per-sub-question evidence, weaving the partial answers into coherent prose with consistent citation markers. Strict schemas keep it from inventing claims not supported by the gathered evidence.",
+    "context": "The Writer agent consumes structured research findings and produces the final user-facing report. It is responsible for tone, structure, and citation consistency. Bounded prompts and Pydantic-typed inputs prevent it from hallucinating beyond the evidence the Researcher gathered."
+  },
+  {
+    "question": "Why are role boundaries between agents important?",
+    "answer": "Role boundaries prevent any single agent from doing too much, which is where most agent failures come from. A Planner that tries to also research, or a Writer that re-plans, blurs responsibility and produces inconsistent output. Strict schemas enforce role boundaries.",
+    "context": "Multi-agent systems are most reliable when each agent has a narrow, well-defined role enforced by its input/output schema. Cross-role drift (planner answering, writer planning) typically produces lower-quality outputs than upgrading the model itself would fix."
+  },
+  {
+    "question": "What is a Pydantic structured output and why use it for agent steps?",
+    "answer": "A Pydantic structured output is a model defining the exact schema each agent must return. The LLM is prompted (or function-calling-constrained) to fill that schema. Downstream agents consume typed fields directly, eliminating brittle string parsing and enforcing pipeline contracts.",
+    "context": "Structured outputs in agent pipelines are typed schemas (Pydantic models, JSON schemas) that each agent must produce. They serve as contracts between agents, ensuring the next stage receives validated, predictable input. This is foundational for reliable multi-agent orchestration."
+  },
+  {
+    "question": "How does FastAPI help with serving an LLM application?",
+    "answer": "FastAPI provides asynchronous request handling, automatic OpenAPI documentation, and Pydantic-based request/response validation. The async support lets a single worker handle many concurrent LLM calls efficiently, since most time is spent waiting on I/O.",
+    "context": "FastAPI is a Python web framework built on Starlette and Pydantic. It supports async/await natively, making it well-suited for LLM-backed applications where requests spend most of their time waiting on remote API calls. Type-driven validation and OpenAPI generation reduce boilerplate."
+  },
+  {
+    "question": "Why use Server-Sent Events (SSE) instead of polling for streaming LLM output?",
+    "answer": "SSE pushes incremental events from server to client over a single long-lived HTTP connection. The client sees tokens or stage updates as they happen, with no polling overhead. It is simpler than WebSockets when the stream is one-directional from server to client.",
+    "context": "Server-Sent Events stream text/event-stream responses from server to client. They use plain HTTP, work through proxies and CDNs, and require no client-side library. For LLM streaming and agent-stage progress UI, SSE matches the unidirectional nature of the stream while avoiding WebSocket complexity."
+  },
+  {
+    "question": "What is the difference between p50, p95, and p99 latency?",
+    "answer": "P50 is the median: half of queries complete faster, half slower. P95 is the 95th percentile, where only 5% of queries are slower. P99 is the tail: 99% complete faster. Production SLAs typically target p95 or p99 because the median hides bad outlier experiences.",
+    "context": "Latency percentiles describe the distribution of response times. P50 (median) reflects typical experience; p95 captures the slow 5%; p99 captures the slowest 1%. Optimizing for p95 means optimizing the experience most users would notice as slow, not just the median path."
+  },
+  {
+    "question": "What is cold-start latency in a RAG service and how can you reduce it?",
+    "answer": "Cold-start is the latency on the first request after startup, when caches are empty and indices may not be loaded. Reduce it by warming embeddings on boot, building BM25 from persisted corpus at startup, and pre-loading models so the first user query does not pay the initialization cost.",
+    "context": "Cold-start latency in RAG comes from loading embedding/generation models, building in-memory indices like BM25, and warming caches. Strategies include rebuilding BM25 on startup from the persisted vector database, preloading the embedding model, and keeping a warm pool of process workers."
+  },
+  {
+    "question": "Why is a singleton retriever often used in a FastAPI RAG app?",
+    "answer": "A singleton ensures the BM25 index and any in-memory state are built once and reused across requests. Otherwise each request would rebuild the index, multiplying memory and latency by the request count. The singleton also serializes writes to keep the index consistent.",
+    "context": "Singleton retriever patterns store one shared instance per process. The BM25 index, which can take seconds to build over thousands of chunks, is constructed once on first access. A write lock around add_documents keeps concurrent ingestion from corrupting the index."
+  },
+  {
+    "question": "How does Docker help in deploying a RAG service?",
+    "answer": "Docker bundles the application, dependencies, and runtime into a portable image. The same image runs in CI, staging, and production, eliminating drift. Combined with Kubernetes or App Platform, it provides the building block for rolling updates and horizontal scaling.",
+    "context": "Containers package an application's environment along with its code, ensuring consistent behavior across machines. For RAG services, Docker images typically bundle Python dependencies, model weights or fetch hooks, and app entrypoints. Container orchestrators handle deployment, health checks, and scaling."
+  },
+  {
+    "question": "What does GitHub Actions CI do for a RAG project?",
+    "answer": "GitHub Actions runs lint, type checks, and tests on every push and pull request, catching regressions before merge. For RAG it can also run a small evaluation harness, build and push the Docker image, and trigger a deploy to staging on green.",
+    "context": "GitHub Actions provides CI/CD pipelines defined as YAML workflows. RAG project workflows commonly run pytest, optional ragas-eval on a small dataset, container builds on push to main, and deploy steps gated on green CI. This automates regression detection and release."
+  },
+  {
+    "question": "Why include a /health endpoint in a RAG service?",
+    "answer": "Health endpoints let load balancers, container orchestrators, and uptime monitors verify the service is alive without making expensive RAG queries. They typically return quickly with a status flag, optionally including readiness checks for Qdrant connectivity or model availability.",
+    "context": "A /health endpoint returns a lightweight response indicating the process is up. Readiness variants additionally verify dependencies (vector database reachable, embedder loaded) before reporting healthy. Kubernetes uses these for liveness/readiness probes; uptime monitors use them for alerting."
+  },
+  {
+    "question": "What is prompt injection and how do you defend against it in RAG?",
+    "answer": "Prompt injection occurs when retrieved or user-supplied text contains instructions that hijack the LLM. Defenses include constraining the prompt template so retrieved content is clearly marked as data, output validation against a strict schema, and treating untrusted text as content rather than instruction.",
+    "context": "Prompt injection attacks embed adversarial instructions inside retrieved documents or user input, attempting to override the system prompt. Mitigations include explicit data-vs-instruction delimiters, structured-output schemas, content filtering, and never letting untrusted text dictate which tools to call."
+  },
+  {
+    "question": "Why use a per-tenant namespace in a vector database for multi-client RAG?",
+    "answer": "Per-tenant namespaces (or collections) ensure one client's documents are never retrieved for another. This is essential for confidentiality, regulatory compliance, and to prevent cross-contamination of retrieved evidence in shared infrastructure.",
+    "context": "Multi-tenant RAG must isolate data at the storage layer. Vector databases support this through per-tenant collections, namespaces, or payload filters scoped to a tenant identifier. Combined with authenticated request scoping, this keeps each client's corpus retrievable only by that client's queries."
+  },
+  {
+    "question": "What is a golden test set in RAG evaluation?",
+    "answer": "A golden test set is a curated collection of question-answer pairs (often with reference contexts) that represent the questions a deployed system must handle. Running it through the pipeline and scoring with RAGAs or similar gives a reproducible quality signal for every change.",
+    "context": "Golden test sets are hand-curated evaluation datasets used as fixed benchmarks. Each entry typically contains a question, a reference answer, and optionally the supporting context. The same set is run repeatedly across changes to detect regressions and validate improvements."
   }
 ]
