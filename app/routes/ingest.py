@@ -34,10 +34,24 @@ async def ingest_document(file: UploadFile = File(...)):
             )
 
         from app.core.pipeline import RAGPipeline
+        from app.workers import get_worker, is_async_ingest_enabled
 
         pipeline = RAGPipeline()
 
-        result = pipeline.ingest_documents(chunks)
+        if is_async_ingest_enabled():
+            # Pre-compute embeddings in the worker pool so the request thread
+            # stays responsive for concurrent /query traffic on large uploads.
+            vectors = await get_worker().precompute(
+                chunks, pipeline.embedder.embed_documents
+            )
+            pipeline.retriever.add_documents(chunks, vectors)
+            result = {
+                "status": "success",
+                "chunks_indexed": len(chunks),
+                "embed_model": pipeline.embedder.get_model_name(),
+            }
+        else:
+            result = pipeline.ingest_documents(chunks)
 
         # New corpus = old query answers may be wrong. Invalidate query cache.
         from app.cache import query_cache
