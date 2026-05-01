@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 from fastapi import APIRouter, HTTPException
@@ -38,8 +39,13 @@ async def query_documents(request: QueryRequest):
 
         start_time = time.time()
 
-        result = pipeline.query(
-            question=request.question, rewrite_query=request.rewrite_query
+        # The Claude CLI wrapper refuses sync .invoke() calls inside a running
+        # event loop. Push the whole sync pipeline to a thread so any LLM
+        # backend (Ollama, OpenAI, Claude CLI) works the same way from here.
+        result = await asyncio.to_thread(
+            pipeline.query,
+            request.question,
+            request.rewrite_query,
         )
 
         end_time = time.time()

@@ -5,6 +5,15 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 
 
+def _build_claude_code_llm(model: str = "sonnet"):
+    """ChatClaudeCode wrapper. Lazy-imports so the module isn't required
+    unless `claude` is the selected provider. Runs the Claude CLI as a
+    subprocess against the user's logged-in subscription — no API key.
+    """
+    from langchain_claude_code import ChatClaudeCode
+    return ChatClaudeCode(model=model, permission_mode="default")
+
+
 class Generator:
     def __init__(
         self,
@@ -24,7 +33,10 @@ class Generator:
         if self.api_key and self.api_key.startswith("sk-or-"):
             self.provider = "openrouter"
 
-        if self.provider == "openrouter":
+        if self.provider == "claude":
+            # Claude CLI subscription path — no API key, model ∈ {sonnet,opus,haiku}.
+            self.llm = _build_claude_code_llm(model=self.model or "sonnet")
+        elif self.provider == "openrouter":
             self.llm = ChatOpenAI(
                 model=self.model,
                 api_key=self.api_key,
@@ -84,7 +96,9 @@ class Generator:
         
         # Create LLM instance with provided settings if different
         if provider != self.provider or model != self.model or api_key != self.api_key:
-            if provider == "openrouter":
+            if provider == "claude":
+                llm = _build_claude_code_llm(model=model or "sonnet")
+            elif provider == "openrouter":
                 llm = ChatOpenAI(
                     model=model, 
                     api_key=api_key, 
@@ -126,7 +140,7 @@ Instructions:
 
 Answer:"""
 
-        if provider in ["openai", "anthropic", "openrouter"]:
+        if provider in ["openai", "anthropic", "openrouter", "claude"]:
             response = current_llm.invoke(prompt)
             return response.content
         else:
@@ -141,7 +155,7 @@ Original question: {question}
 
 Rewritten question:"""
 
-        if self.provider in ["openai", "anthropic", "openrouter"]:
+        if self.provider in ["openai", "anthropic", "openrouter", "claude"]:
             response = self.llm.invoke(prompt)
             return response.content.strip()
         else:
