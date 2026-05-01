@@ -1,0 +1,422 @@
+{
+  "config": {
+    "server": "http://127.0.0.1:8002",
+    "top_k": 5,
+    "hit_prefix_chars": 60,
+    "embed_model": "all-MiniLM-L6-v2",
+    "llm_model": "llama3.2:3b",
+    "retrieval_mode": "hybrid",
+    "eval_date": "2026-05-01T17:36:43"
+  },
+  "metrics": {
+    "retrieval_hit_at_k": 0.94,
+    "citation_presence": 0.96,
+    "error_rate": 0.0,
+    "latency_ms_mean": 4917.6,
+    "latency_ms_median": 4241.2,
+    "latency_ms_p95": 8890.5
+  },
+  "per_question": [
+    {
+      "question": "What is LangGraph and what problem does it solve?",
+      "answer_chars": 289,
+      "retrieved": 5,
+      "latency_ms": 10100.4,
+      "hit": false,
+      "cited": true
+    },
+    {
+      "question": "How does LangGraph handle state management?",
+      "answer_chars": 277,
+      "retrieved": 5,
+      "latency_ms": 3627.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is the difference between edges and conditional edges in LangGraph?",
+      "answer_chars": 334,
+      "retrieved": 5,
+      "latency_ms": 4651.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "How do you add tool calling to a LangGraph agent?",
+      "answer_chars": 578,
+      "retrieved": 5,
+      "latency_ms": 7900.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is a checkpoint in LangGraph?",
+      "answer_chars": 198,
+      "retrieved": 5,
+      "latency_ms": 2767.7,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "How does RAG retrieval work with vector databases?",
+      "answer_chars": 315,
+      "retrieved": 5,
+      "latency_ms": 3638.9,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is hybrid retrieval and why is it better than dense-only search?",
+      "answer_chars": 307,
+      "retrieved": 5,
+      "latency_ms": 3531.2,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What metrics does RAGAS use to evaluate RAG systems?",
+      "answer_chars": 147,
+      "retrieved": 5,
+      "latency_ms": 2086.5,
+      "hit": true,
+      "cited": false
+    },
+    {
+      "question": "What is chunking and how does chunk size affect retrieval quality?",
+      "answer_chars": 430,
+      "retrieved": 5,
+      "latency_ms": 4988.2,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "How does Reciprocal Rank Fusion work?",
+      "answer_chars": 327,
+      "retrieved": 5,
+      "latency_ms": 28538.7,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is faithfulness in RAGAS and how is it measured?",
+      "answer_chars": 379,
+      "retrieved": 5,
+      "latency_ms": 4728.9,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "How does answer relevancy differ from faithfulness?",
+      "answer_chars": 238,
+      "retrieved": 5,
+      "latency_ms": 3224.4,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is context precision and why does it matter?",
+      "answer_chars": 280,
+      "retrieved": 5,
+      "latency_ms": 3785.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is context recall and how is it computed?",
+      "answer_chars": 250,
+      "retrieved": 5,
+      "latency_ms": 2727.2,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "Why use BM25 alongside dense embeddings instead of relying on dense alone?",
+      "answer_chars": 280,
+      "retrieved": 5,
+      "latency_ms": 3431.0,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "How does Qdrant differ from FAISS or Chroma?",
+      "answer_chars": 372,
+      "retrieved": 5,
+      "latency_ms": 4888.8,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is HNSW and why is it used in vector databases?",
+      "answer_chars": 283,
+      "retrieved": 5,
+      "latency_ms": 3969.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What does cosine similarity measure between two embeddings?",
+      "answer_chars": 237,
+      "retrieved": 5,
+      "latency_ms": 2927.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "Why are embeddings often normalized to unit length before storage?",
+      "answer_chars": 359,
+      "retrieved": 5,
+      "latency_ms": 3835.8,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is sentence-transformers all-MiniLM-L6-v2 and when should you use it?",
+      "answer_chars": 393,
+      "retrieved": 5,
+      "latency_ms": 5219.4,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What does it mean to embed a query and a document into the same vector space?",
+      "answer_chars": 327,
+      "retrieved": 5,
+      "latency_ms": 3996.8,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is query rewriting and why does it improve RAG?",
+      "answer_chars": 366,
+      "retrieved": 5,
+      "latency_ms": 4160.4,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "Why does pre-computing embeddings asynchronously help latency?",
+      "answer_chars": 323,
+      "retrieved": 5,
+      "latency_ms": 3467.0,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is semantic caching and how does it differ from a regular query cache?",
+      "answer_chars": 250,
+      "retrieved": 5,
+      "latency_ms": 3876.5,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "How do you measure p95 latency for a RAG query?",
+      "answer_chars": 224,
+      "retrieved": 5,
+      "latency_ms": 3952.5,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is MLflow used for in an LLM project?",
+      "answer_chars": 278,
+      "retrieved": 5,
+      "latency_ms": 4382.4,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "How would you detect a regression in RAG quality between two MLflow runs?",
+      "answer_chars": 397,
+      "retrieved": 5,
+      "latency_ms": 5385.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "Why instrument LLM calls with tracing?",
+      "answer_chars": 403,
+      "retrieved": 5,
+      "latency_ms": 5575.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What's the role of structured outputs in agent reliability?",
+      "answer_chars": 391,
+      "retrieved": 5,
+      "latency_ms": 5296.4,
+      "hit": false,
+      "cited": true
+    },
+    {
+      "question": "What is the difference between fine-tuning and RAG for adding knowledge to an LLM?",
+      "answer_chars": 189,
+      "retrieved": 5,
+      "latency_ms": 2853.5,
+      "hit": true,
+      "cited": false
+    },
+    {
+      "question": "When does fine-tuning make more sense than RAG?",
+      "answer_chars": 363,
+      "retrieved": 5,
+      "latency_ms": 5713.1,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is QLoRA and why is it efficient?",
+      "answer_chars": 325,
+      "retrieved": 5,
+      "latency_ms": 5813.2,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What does PEFT stand for and what does it enable?",
+      "answer_chars": 261,
+      "retrieved": 5,
+      "latency_ms": 4597.6,
+      "hit": false,
+      "cited": true
+    },
+    {
+      "question": "Why use Pydantic for LLM output validation?",
+      "answer_chars": 383,
+      "retrieved": 5,
+      "latency_ms": 4917.7,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is the role of the Planner agent in a multi-agent pipeline?",
+      "answer_chars": 259,
+      "retrieved": 5,
+      "latency_ms": 3660.5,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What does the Researcher agent typically do in a research pipeline?",
+      "answer_chars": 202,
+      "retrieved": 5,
+      "latency_ms": 2669.1,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What does the Writer agent do at the end of a pipeline?",
+      "answer_chars": 196,
+      "retrieved": 5,
+      "latency_ms": 2790.4,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "Why are role boundaries between agents important?",
+      "answer_chars": 296,
+      "retrieved": 5,
+      "latency_ms": 3537.4,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is a Pydantic structured output and why use it for agent steps?",
+      "answer_chars": 244,
+      "retrieved": 5,
+      "latency_ms": 3489.4,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "How does FastAPI help with serving an LLM application?",
+      "answer_chars": 318,
+      "retrieved": 5,
+      "latency_ms": 4129.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "Why use Server-Sent Events (SSE) instead of polling for streaming LLM output?",
+      "answer_chars": 343,
+      "retrieved": 5,
+      "latency_ms": 5550.3,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is the difference between p50, p95, and p99 latency?",
+      "answer_chars": 321,
+      "retrieved": 5,
+      "latency_ms": 5698.9,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is cold-start latency in a RAG service and how can you reduce it?",
+      "answer_chars": 575,
+      "retrieved": 5,
+      "latency_ms": 7814.6,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "Why is a singleton retriever often used in a FastAPI RAG app?",
+      "answer_chars": 248,
+      "retrieved": 5,
+      "latency_ms": 4176.9,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "How does Docker help in deploying a RAG service?",
+      "answer_chars": 296,
+      "retrieved": 5,
+      "latency_ms": 4305.4,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What does GitHub Actions CI do for a RAG project?",
+      "answer_chars": 290,
+      "retrieved": 5,
+      "latency_ms": 4482.9,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "Why include a /health endpoint in a RAG service?",
+      "answer_chars": 300,
+      "retrieved": 5,
+      "latency_ms": 4443.0,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is prompt injection and how do you defend against it in RAG?",
+      "answer_chars": 396,
+      "retrieved": 5,
+      "latency_ms": 5546.0,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "Why use a per-tenant namespace in a vector database for multi-client RAG?",
+      "answer_chars": 291,
+      "retrieved": 5,
+      "latency_ms": 4470.1,
+      "hit": true,
+      "cited": true
+    },
+    {
+      "question": "What is a golden test set in RAG evaluation?",
+      "answer_chars": 310,
+      "retrieved": 5,
+      "latency_ms": 4557.8,
+      "hit": true,
+      "cited": true
+    }
+  ],
+  "timestamp": "2026-05-01T17:36:43"
+}
