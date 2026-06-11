@@ -1,6 +1,6 @@
-# Production RAG System with Evaluation Harness
+# RAG System with Evaluation Harness
 
-A production-grade RAG (Retrieval-Augmented Generation) Q&A API system with full evaluation pipeline using RAGAs metrics and MLflow experiment tracking. Features a modern web UI with support for multiple LLM providers.
+A RAG (Retrieval-Augmented Generation) Q&A API system with a full evaluation pipeline using RAGAs metrics and MLflow experiment tracking. Features a modern web UI with support for multiple LLM providers.
 
 ![CI](https://github.com/axon011/rag-eval-system/workflows/CI/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
