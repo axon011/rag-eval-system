@@ -23,6 +23,48 @@ def detect_provider_from_key(api_key: Optional[str], default: Optional[str] = No
     return default
 
 
+# A sensible default model per provider, used when the UI switches providers and
+# needs to replace a now-invalid model, or as a server-side fallback.
+PROVIDER_DEFAULT_MODELS = {
+    "ollama": "llama3.2",
+    "openai": "gpt-4o-mini",
+    "anthropic": "claude-3-5-haiku-20241022",
+    "openrouter": "openai/gpt-4o-mini",
+    "claude": "sonnet",
+}
+
+
+def default_model_for_provider(provider: Optional[str]) -> str:
+    """Return a valid default model id for a provider."""
+    return PROVIDER_DEFAULT_MODELS.get((provider or "").strip().lower(), "llama3.2")
+
+
+def validate_provider_model(provider: Optional[str], model: Optional[str]) -> None:
+    """Raise ValueError on a provider/model pair that cannot possibly work.
+
+    High-precision on purpose — it only rejects combinations that are certain to
+    fail (which otherwise surface as an opaque "Connection error"), so valid
+    setups are never blocked. The common trap: an OpenRouter model id left in the
+    field after switching the provider to Anthropic/OpenAI.
+    """
+    if not provider or not model:
+        return
+    p = provider.strip().lower()
+    m = model.strip().lower()
+    if p == "anthropic" and "claude" not in m:
+        raise ValueError(
+            f"Provider 'anthropic' cannot use model '{model}'. Use a Claude model "
+            f"(e.g. 'claude-3-5-haiku-20241022'). A '.../...' id like this is usually "
+            f"an OpenRouter model — switch the provider to 'openrouter' to use it."
+        )
+    if p == "openai" and "/" in model and "openrouter" not in (os.getenv("OPENAI_BASE_URL") or ""):
+        raise ValueError(
+            f"Provider 'openai' cannot use model '{model}'. Models with a '/' are "
+            f"OpenRouter ids — switch the provider to 'openrouter', or use a plain "
+            f"OpenAI model such as 'gpt-4o-mini'."
+        )
+
+
 def _build_claude_code_llm(model: str = "sonnet"):
     """ChatClaudeCode wrapper. Lazy-imports so the module isn't required
     unless `claude` is the selected provider. Runs the Claude CLI as a

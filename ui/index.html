@@ -196,14 +196,14 @@
             retrievalMode: localStorage.getItem('retrievalMode') || 'hybrid',
             maxChunks: parseInt(localStorage.getItem('maxChunks')) || 5
         };
-        // Auto-detect server config on first visit (no localStorage yet)
+        // Auto-detect server config on first visit (no localStorage yet). The
+        // server default provider is Ollama (local); use its model so the first
+        // visit is a coherent Ollama+model pair, not a provider/model mismatch.
         if (!localStorage.getItem('provider')) {
             fetch('/query/config').then(r => r.json()).then(cfg => {
                 if (cfg.llm_model) { settings.model = cfg.llm_model; localStorage.setItem('model', cfg.llm_model); }
-                // Map known base URLs to providers
-                const provider = cfg.retrieval_mode ? 'openai' : 'ollama';
-                settings.provider = 'openai';
-                localStorage.setItem('provider', 'openai');
+                settings.provider = 'ollama';
+                localStorage.setItem('provider', 'ollama');
                 initSettings();
             }).catch(() => {});
         }
@@ -551,6 +551,11 @@
                 document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 settings.provider = btn.dataset.provider;
+                // Switching providers invalidates the current model (an OpenRouter
+                // id can't run on Anthropic, etc.) — clear it so updateApiKeyUI()
+                // fills the new provider's default and it stays coherent.
+                settings.model = '';
+                document.getElementById('modelInput').value = '';
                 updateApiKeyUI();
             });
         });
