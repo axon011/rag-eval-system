@@ -11,6 +11,7 @@ from datasets import Dataset
 from eval.dataset import EvalDataset
 from app.core.pipeline import RAGPipeline
 from mlflow_tracking.log_experiment import MLflowTracker
+from langfuse_tracking.log_experiment import LangfuseTracker
 
 
 class EvalRunner:
@@ -114,6 +115,18 @@ class EvalRunner:
             print(f"Logged to MLflow: {run_name}")
         except Exception as e:
             print(f"MLflow logging skipped: {e}")
+
+        # Log the same run to Langfuse. Runs ALONGSIDE MLflow, not instead of it:
+        # MLflow keeps the experiment ledger, Langfuse adds the per-question
+        # traces behind the numbers. Self-disables if keys aren't set.
+        try:
+            LangfuseTracker().log_experiment(
+                config=self.config,
+                metrics=results_dict["metrics"],
+                run_name=run_name,
+            )
+        except Exception as e:
+            print(f"Langfuse logging skipped: {e}")
 
         return results_dict
     
