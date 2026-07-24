@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from app.routes import ingest, query
+from app.routes import ingest, query, models
 from app.models.schemas import HealthResponse
 
 app = FastAPI(
@@ -49,6 +49,7 @@ async def root():
 
 app.include_router(ingest.router)
 app.include_router(query.router)
+app.include_router(models.router)
 
 
 @app.get("/health", response_model=HealthResponse)
