@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.models.schemas import QueryRequest, QueryResponse, Source
 from app.core.pipeline import RAGPipeline
+from app.core.generator import detect_provider_from_key, validate_provider_model
 
 router = APIRouter(prefix="/query", tags=["Query"])
 
@@ -13,6 +14,22 @@ QUERY_CACHE_ENABLED = os.getenv("QUERY_CACHE_ENABLED", "true").lower() == "true"
 
 @router.post("/", response_model=QueryResponse)
 async def query_documents(request: QueryRequest):
+    # Resolve the provider/model the pipeline will actually use (same logic as
+    # the generator: an API-key prefix wins, else the request, else env), so
+    # both the up-front validation and any error message name the real values.
+    eff_provider = detect_provider_from_key(
+        request.api_key,
+        default=request.provider or os.getenv("LLM_PROVIDER", "ollama"),
+    )
+    eff_model = request.model or os.getenv("LLM_MODEL", "llama3.2")
+
+    # Fail fast on an incoherent provider/model pair with an actionable message,
+    # rather than letting it surface deep in the SDK as "Connection error."
+    try:
+        validate_provider_model(eff_provider, eff_model)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     try:
         if QUERY_CACHE_ENABLED:
             from app.cache import query_cache, CachedResponse
@@ -77,8 +94,24 @@ async def query_documents(request: QueryRequest):
             latency_ms=round(latency_ms, 2),
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
+        # Surface the REAL failure — provider, model, exception type and message —
+        # instead of a bare "Connection error." A terse SDK message like that is
+        # almost always a provider/model/key mismatch; name the moving parts so
+        # it's fixable from the UI.
+        msg = str(e).strip() or "no detail"
+        detail = (
+            f"Query failed [provider={eff_provider}, model={eff_model}]: "
+            f"{type(e).__name__}: {msg}"
+        )
+        if "connection error" in msg.lower():
+            detail += (
+                " — this usually means the model isn't valid for this provider, "
+                "or the API key/base URL is wrong. Check the Model and API Key in Settings."
+            )
+        raise HTTPException(status_code=500, detail=detail)
 
 
 @router.get("/config")
