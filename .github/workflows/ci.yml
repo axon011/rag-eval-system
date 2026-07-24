@@ -75,10 +75,24 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
+    # Reclaim runner disk before building — the image pulls large ML wheels
+    # (torch, CUDA/triton transitively). Insurance on top of the CPU-only torch
+    # install in the Dockerfile.
+    - name: Free disk space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: false
+        docker-images: false
+        swap-storage: false
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    
+
     - name: Build Docker image
       uses: docker/build-push-action@v5
       with:
