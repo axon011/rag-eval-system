@@ -220,6 +220,16 @@
             updateApiKeyUI();
         }
 
+        // Map an API key prefix to its provider. Returns null for Ollama / unknown keys.
+        function detectProvider(key) {
+            if (!key) return null;
+            key = key.trim();
+            if (key.startsWith('sk-ant-')) return 'anthropic';   // Anthropic
+            if (key.startsWith('sk-or-')) return 'openrouter';    // OpenRouter
+            if (key.startsWith('sk-')) return 'openai';           // OpenAI
+            return null;
+        }
+
         function updateApiKeyUI() {
             const apiKeyGroup = document.getElementById('apiKeyGroup');
             const apiKeyStatus = document.getElementById('apiKeyStatus');
@@ -235,16 +245,15 @@
                 openrouter: ['z-ai/glm-4.5-air:free', 'openai/gpt-4o-mini', 'google/gemma-2-9b', 'meta-llama/llama-3.1-8b-instruct']
             };
             
-            // Auto-detect OpenRouter from key
-            if (settings.apiKey && settings.apiKey.startsWith('sk-or-')) {
-                settings.provider = 'openrouter';
-                document.querySelectorAll('.provider-btn').forEach(b => {
-                    b.classList.remove('active');
-                });
-            }
-            
+            // Auto-detect provider from the API key prefix and sync the button row
+            const detected = detectProvider(settings.apiKey);
+            if (detected) settings.provider = detected;
+            document.querySelectorAll('.provider-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.provider === settings.provider);
+            });
+
             // Update datalist options
-            modelSuggestions.innerHTML = models[settings.provider] || models.ollama
+            modelSuggestions.innerHTML = (models[settings.provider] || models.ollama)
                 .map(m => `<option value="${m}">`).join('');
             
             // Set default model for provider
@@ -268,16 +277,13 @@
                 }
             }
             
-            // Update hint based on provider
-            if (settings.provider === 'openai') {
-                if (settings.apiKey && settings.apiKey.startsWith('sk-or-')) {
-                    apiKeyHint.textContent = 'OpenRouter detected - use model format: openai/gpt-4o-mini';
-                } else {
-                    apiKeyHint.textContent = 'Get your key from: https://platform.openai.com/api-keys';
-                }
-            } else if (settings.provider === 'anthropic') {
-                apiKeyHint.textContent = 'Get your key from: https://console.anthropic.com/settings/keys';
-            }
+            // Update hint based on provider (provider is auto-detected from the key)
+            const hints = {
+                openai: 'OpenAI key detected. Get one from: https://platform.openai.com/api-keys',
+                openrouter: 'OpenRouter key detected. Use model format: openai/gpt-4o-mini',
+                anthropic: 'Anthropic key detected. Get one from: https://console.anthropic.com/settings/keys'
+            };
+            apiKeyHint.textContent = hints[settings.provider] || '';
         }
 
         // Debounce helper
@@ -549,8 +555,23 @@
             });
         });
 
+        // Live provider auto-detection as the user types or pastes a key
+        document.getElementById('apiKeyInput').addEventListener('input', (e) => {
+            const prev = settings.provider;
+            settings.apiKey = e.target.value;
+            const detected = detectProvider(settings.apiKey);
+            if (detected && detected !== prev) {
+                // Switched providers — reset to the new provider's default model
+                settings.model = '';
+                document.getElementById('modelInput').value = '';
+            }
+            updateApiKeyUI();
+        });
+
         document.getElementById('saveSettings').addEventListener('click', () => {
             settings.apiKey = document.getElementById('apiKeyInput').value;
+            const detected = detectProvider(settings.apiKey);
+            if (detected) settings.provider = detected;
             settings.model = document.getElementById('modelInput').value;
             settings.retrievalMode = document.getElementById('retrievalMode').value;
             settings.maxChunks = parseInt(document.getElementById('maxChunks').value);

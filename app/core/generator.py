@@ -5,6 +5,24 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 
 
+def detect_provider_from_key(api_key: Optional[str], default: Optional[str] = None) -> Optional[str]:
+    """Infer the LLM provider from an API key prefix. Mirrors the UI auto-detect.
+
+    Returns the detected provider, or ``default`` when the key is empty or its
+    prefix is unrecognized (e.g. Ollama, or the keyless Claude CLI path).
+    """
+    if not api_key:
+        return default
+    key = api_key.strip()
+    if key.startswith("sk-ant-"):
+        return "anthropic"   # Anthropic
+    if key.startswith("sk-or-"):
+        return "openrouter"  # OpenRouter
+    if key.startswith("sk-"):
+        return "openai"      # OpenAI
+    return default
+
+
 def _build_claude_code_llm(model: str = "sonnet"):
     """ChatClaudeCode wrapper. Lazy-imports so the module isn't required
     unless `claude` is the selected provider. Runs the Claude CLI as a
@@ -29,9 +47,8 @@ class Generator:
         self.provider = provider or os.getenv("LLM_PROVIDER", "ollama")
         self.api_key = api_key or os.getenv("LLM_API_KEY")
 
-        # Auto-detect OpenRouter from API key prefix
-        if self.api_key and self.api_key.startswith("sk-or-"):
-            self.provider = "openrouter"
+        # Auto-detect the provider from the API key prefix (mirrors the UI).
+        self.provider = detect_provider_from_key(self.api_key, default=self.provider)
 
         if self.provider == "claude":
             # Claude CLI subscription path — no API key, model ∈ {sonnet,opus,haiku}.
@@ -90,9 +107,8 @@ class Generator:
         provider = provider or self.provider
         api_key = api_key or self.api_key
         
-        # Auto-detect OpenRouter from API key prefix
-        if api_key and api_key.startswith("sk-or-"):
-            provider = "openrouter"
+        # Auto-detect the provider from the API key prefix (mirrors the UI).
+        provider = detect_provider_from_key(api_key, default=provider)
         
         # Create LLM instance with provided settings if different
         if provider != self.provider or model != self.model or api_key != self.api_key:

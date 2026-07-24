@@ -2,7 +2,8 @@ import os
 from typing import List, Dict, Any, Optional
 from .embedder import Embedder
 from .retriever import Retriever
-from .generator import Generator
+from .generator import Generator, detect_provider_from_key
+from . import tracing
 
 
 class RAGPipeline:
@@ -35,6 +36,9 @@ class RAGPipeline:
         self.model = model or os.getenv("LLM_MODEL", "llama3.2")
         self.provider = provider or os.getenv("LLM_PROVIDER", "ollama")
         self.api_key = api_key or os.getenv("LLM_API_KEY")
+        # Auto-detect the provider from the API key prefix so tracing metadata
+        # and the generate() call below use the same resolved provider.
+        self.provider = detect_provider_from_key(self.api_key, default=self.provider)
         self.max_chunks = max_chunks
 
     def ingest_documents(self, chunks: List[str]) -> Dict[str, Any]:
@@ -49,27 +53,75 @@ class RAGPipeline:
 
     def query(self, question: str, rewrite_query: bool = True) -> Dict[str, Any]:
         original_question = question
-        
-        if rewrite_query:
-            question = self.generator.rewrite_query(question)
-        
-        query_vector = self.embedder.embed_query(question)
-        
-        retrieved_docs = self.retriever.retrieve(
-            query_vector=query_vector,
-            query=question,
-            mode=self.retrieval_mode,
-            top_k=self.max_chunks
-        )
-        
-        answer = self.generator.generate(
-            original_question, 
-            retrieved_docs,
-            model=self.model,
-            provider=self.provider,
-            api_key=self.api_key
-        )
-        
+
+        # Root observation. Every stage below nests inside it automatically —
+        # nesting follows Python scope, no parent IDs are threaded through.
+        with tracing.observe(
+            as_type="span",
+            name="rag-query",
+            input={"question": original_question},
+            metadata={
+                "retrieval_mode": self.retrieval_mode,
+                "llm_model": self.model,
+                "provider": self.provider,
+                "top_k": self.max_chunks,
+            },
+        ) as root:
+
+            # Query rewriting is itself an LLM call, so type it as a generation
+            # rather than a plain span — otherwise its tokens go uncounted.
+            if rewrite_query:
+                with tracing.observe(
+                    as_type="generation",
+                    name="query-rewrite",
+                    model=self.model,
+                    input=question,
+                ) as rw:
+                    question = self.generator.rewrite_query(question)
+                    rw.update(output=question)
+
+            with tracing.observe(
+                as_type="span", name="embed-query", input={"text": question}
+            ) as emb:
+                query_vector = self.embedder.embed_query(question)
+                emb.update(output={"dim": len(query_vector)})
+
+            # "retriever" is a first-class observation type in v4 and is the
+            # correct one for RAG lookups.
+            with tracing.observe(
+                as_type="retriever",
+                name=f"retrieve-{self.retrieval_mode}",
+                input={"query": question, "top_k": self.max_chunks},
+            ) as ret:
+                retrieved_docs = self.retriever.retrieve(
+                    query_vector=query_vector,
+                    query=question,
+                    mode=self.retrieval_mode,
+                    top_k=self.max_chunks
+                )
+                ret.update(output={
+                    "hits": len(retrieved_docs),
+                    "scores": [d.get("score") for d in retrieved_docs],
+                    "methods": [d.get("methods", []) for d in retrieved_docs],
+                })
+
+            with tracing.observe(
+                as_type="generation",
+                name="generate-answer",
+                model=self.model,
+                input={"question": original_question, "n_contexts": len(retrieved_docs)},
+            ) as gen:
+                answer = self.generator.generate(
+                    original_question,
+                    retrieved_docs,
+                    model=self.model,
+                    provider=self.provider,
+                    api_key=self.api_key
+                )
+                gen.update(output=answer)
+
+            root.update(output={"answer": answer, "retrieved_chunks": len(retrieved_docs)})
+
         sources = [
             {
                 "text": doc["text"][:200] + "..." if len(doc["text"]) > 200 else doc["text"],
