@@ -205,6 +205,7 @@
                 settings.provider = 'ollama';
                 localStorage.setItem('provider', 'ollama');
                 initSettings();
+                refreshModelList(false);
             }).catch(() => {});
         }
 
@@ -291,6 +292,48 @@
             let timeout;
             return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => fn(...args), delay); };
         }
+
+        // --- Model list: fetch real models from the provider's API (via the
+        // backend /models endpoint) and populate the datalist, so the Model
+        // field is a dropdown of valid ids instead of free text. Cached per
+        // (provider, key-prefix) so it doesn't refetch on every keystroke.
+        const modelListCache = {};
+        async function fetchModels(provider, apiKey) {
+            const cacheKey = provider + '|' + (apiKey ? apiKey.slice(0, 10) : '');
+            if (modelListCache[cacheKey]) return modelListCache[cacheKey];
+            try {
+                const resp = await fetch(`${API_BASE}/models/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider, api_key: apiKey || undefined })
+                });
+                if (!resp.ok) return null;
+                const data = await resp.json();
+                const list = data.models || [];
+                modelListCache[cacheKey] = list;
+                return list;
+            } catch { return null; }
+        }
+
+        // Populate the Model datalist from the live provider list. If forceReset
+        // is set, or the current model isn't in the returned list, pick the first
+        // valid model so provider and model stay coherent (prevents the P1 trap).
+        async function refreshModelList(forceReset) {
+            const provider = settings.provider;
+            const apiKey = settings.apiKey;
+            // openai/anthropic need a key to list; ollama/openrouter/claude don't.
+            if ((provider === 'openai' || provider === 'anthropic') && !apiKey) return;
+            const list = await fetchModels(provider, apiKey);
+            if (!list || !list.length) return;
+            const modelInput = document.getElementById('modelInput');
+            document.getElementById('modelSuggestions').innerHTML =
+                list.map(m => `<option value="${m}">`).join('');
+            if (forceReset || !settings.model || !list.includes(settings.model)) {
+                settings.model = list.includes(settings.model) ? settings.model : list[0];
+                modelInput.value = settings.model;
+            }
+        }
+        const refreshModelListDebounced = debounce(() => refreshModelList(true), 500);
 
         // Tab switching
         document.querySelectorAll('.tab').forEach(tab => {
@@ -557,6 +600,7 @@
                 settings.model = '';
                 document.getElementById('modelInput').value = '';
                 updateApiKeyUI();
+                refreshModelList(true);  // replace defaults with the live model list
             });
         });
 
@@ -571,6 +615,9 @@
                 document.getElementById('modelInput').value = '';
             }
             updateApiKeyUI();
+            // Fetch the real model list for this provider+key (debounced so it
+            // doesn't fire on every keystroke while pasting a key).
+            refreshModelListDebounced();
         });
 
         document.getElementById('saveSettings').addEventListener('click', () => {
@@ -593,6 +640,9 @@
 
         // Initialize settings on load
         initSettings();
-    </script>
+        // Populate the model dropdown from the live provider list (e.g. real
+        // Ollama tags) without overriding a model the user already chose.
+        refreshModelList(false);
+</script>
 </body>
 </html>
