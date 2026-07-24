@@ -34,9 +34,20 @@ class Retriever:
         self.collection_name = collection_name or os.getenv("QDRANT_COLLECTION", "documents")
         self.top_k = top_k or int(os.getenv("TOP_K", "5"))
 
-        # In-memory mode: no Qdrant server needed
-        if os.getenv("QDRANT_MODE", "server") == "memory":
+        # Three modes:
+        #   memory  — ":memory:", RAM only, nothing survives a restart (fast tests)
+        #   local   — on-disk local storage, survives restarts, NO server/container
+        #             needed (durable single-process store; the app is the only writer)
+        #   server  — a running Qdrant instance over host:port
+        qdrant_mode = os.getenv("QDRANT_MODE", "server").lower()
+        if qdrant_mode == "memory":
             self.client = QdrantClient(location=":memory:")
+        elif qdrant_mode in ("local", "disk", "path"):
+            # Persist under QDRANT_PATH (default ./qdrant_data). Local mode holds a
+            # file lock, so only one process may open the path at a time — fine
+            # here since the Retriever is a per-process singleton.
+            self.qdrant_path = os.getenv("QDRANT_PATH", "./qdrant_data")
+            self.client = QdrantClient(path=self.qdrant_path)
         else:
             self.client = QdrantClient(host=self.qdrant_host, port=self.qdrant_port)
         self._ensure_collection()

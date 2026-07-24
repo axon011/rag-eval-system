@@ -43,6 +43,9 @@ ENV/
 mlruns/
 mlartifacts/
 
+# Qdrant local on-disk store (QDRANT_MODE=local)
+qdrant_data/
+
 # Testing
 .pytest_cache/
 .coverage
