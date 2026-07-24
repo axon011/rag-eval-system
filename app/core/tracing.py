@@ -29,7 +29,6 @@ from typing import Any, Dict, Optional
 # before any Langfuse client is built — configures the exporter, the batch
 # processor export timeout, and the REST client in one place.
 os.environ.setdefault("LANGFUSE_TIMEOUT", "30")
-_FLUSH_TIMEOUT_S = int(os.environ.get("LANGFUSE_TIMEOUT", "30"))
 
 _client = None
 _checked = False
