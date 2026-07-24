@@ -152,11 +152,30 @@ def score_trace(name: str, value: Any, data_type: Optional[str] = None,
         print(f"[tracing] score '{name}' failed ({type(e).__name__})")
 
 
+def _has_active_span() -> bool:
+    """True only when an OTel span is active in the current context.
+
+    Calling client.get_trace_url()/get_current_trace_id() with no active span
+    makes the SDK log a "No active span in current context" warning before it
+    returns None. We replicate its own INVALID_SPAN check here so we can read the
+    cached value directly instead of provoking that noisy log.
+    """
+    try:
+        from opentelemetry import trace as _otel
+        return _otel.get_current_span() is not _otel.INVALID_SPAN
+    except Exception:
+        return False
+
+
 def trace_url() -> Optional[str]:
     """URL of the current trace, or the most recent one if none is active."""
     client = get_client()
     if client is None:
         return None
+    # Outside a span the SDK call only warns and returns None anyway, so skip it
+    # and hand back the cached URL — same result, no log spam.
+    if not _has_active_span():
+        return _last_trace_url
     try:
         return client.get_trace_url() or _last_trace_url
     except Exception:
