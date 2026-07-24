@@ -12,8 +12,24 @@ Enable by setting in .env:
 """
 
 import os
+import time
 from contextlib import contextmanager
 from typing import Any, Dict, Optional
+
+# Langfuse batches spans and delivers them over HTTP with, by default, only a
+# 5-second timeout (LANGFUSE_TIMEOUT). A self-hosted instance under memory
+# pressure can take longer than that to ack a batch; when the deadline is hit
+# mid-flush the in-flight batch is dropped and observations vanish silently
+# (observed: 3 of 5 spans lost on a slow flush). Give delivery more headroom.
+#
+# This is an UPPER BOUND on how long flush() may block — it does NOT slow the
+# request path. Spans are queued in-process and exported by a background thread;
+# only an explicit flush() (end of a query/script) ever waits on the network.
+# The SDK reads this env var when it constructs the client, so setting it here —
+# before any Langfuse client is built — configures the exporter, the batch
+# processor export timeout, and the REST client in one place.
+os.environ.setdefault("LANGFUSE_TIMEOUT", "30")
+_FLUSH_TIMEOUT_S = int(os.environ.get("LANGFUSE_TIMEOUT", "30"))
 
 _client = None
 _checked = False
@@ -152,13 +168,39 @@ def trace_id() -> Optional[str]:
     return _last_trace_id
 
 
-def flush() -> None:
+def flush(retries: int = 2, backoff: float = 0.5) -> None:
     """Force delivery. MUST be called before a short-lived process exits —
     the SDK batches asynchronously, so a script that returns immediately
-    loses its traces silently."""
+    loses its traces silently.
+
+    A single flush can partially fail when the instance is slow: the batch
+    processor's force_flush returns False if the export didn't finish in time,
+    and any spans it couldn't deliver stay queued. So retry with backoff —
+    each pass drains whatever is still queued — until delivery reports success
+    or the bounded attempt budget is spent. Bounded on purpose: flush runs at
+    the end of a query/script, never on the hot request path, but it must still
+    not hang a process forever.
+    """
     client = get_client()
-    if client is not None:
+    if client is None:
+        return
+
+    # The span-delivery signal lives on the OTel tracer provider; client.flush()
+    # wraps it but discards the True/False, so reach the provider for the retry
+    # decision and still call client.flush() to drain the score + media queues.
+    resources = getattr(client, "_resources", None)
+    provider = getattr(resources, "tracer_provider", None)
+
+    for attempt in range(retries + 1):
         try:
+            if provider is not None and hasattr(provider, "force_flush"):
+                delivered = bool(provider.force_flush())
+            else:
+                delivered = True
             client.flush()
+            if delivered:
+                return
         except Exception:
             pass
+        if attempt < retries:
+            time.sleep(backoff * (2 ** attempt))
