@@ -1,14 +1,16 @@
 """Compare the latest eval run against a baseline and exit non-zero on regression.
 
-Used by CI after `python eval/run_eval.py` produces a fresh
+Run by hand after `python eval/run_eval.py` or `eval/run_eval_local.py` writes a fresh
 `eval/results/run_<date>.json`. Reads the two most recent result files in
 chronological order, computes per-metric percentage drops, and exits with
 status 1 if any metric drops by more than the configured threshold.
 
 Configuration via env:
     REGRESSION_THRESHOLD  fractional drop that fails CI (default 0.05 = 5%)
-    METRICS_TO_CHECK      comma-separated metric names (default: all four
-                          RAGAs metrics)
+    METRICS_TO_CHECK      comma-separated metric names (default: the four
+                          RAGAs metrics plus the local runner's hit@k and
+                          citation presence; all higher-is-better, and a
+                          metric missing from either run is skipped)
 """
 
 from __future__ import annotations
@@ -25,6 +27,8 @@ DEFAULT_METRICS = [
     "answer_relevancy",
     "context_recall",
     "context_precision",
+    "retrieval_hit_at_k",
+    "citation_presence",
 ]
 DEFAULT_THRESHOLD = 0.05
 

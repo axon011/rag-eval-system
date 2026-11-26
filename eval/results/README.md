@@ -25,8 +25,8 @@ python eval/check_regression.py     # compares last two committed runs
 ```
 
 The most recent run (`run_<YYYY-MM-DD>.json`) is committed so that
-`check_regression.py` always has a baseline. Subsequent runs in CI replace
-it on green builds.
+`check_regression.py` always has a baseline. CI does not run the eval:
+run it locally and commit the new result file.
 
 ## 2. RAGAs LLM-judge eval
 

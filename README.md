@@ -59,7 +59,7 @@ A RAG (Retrieval-Augmented Generation) Q&A API system with a full evaluation pip
 - **Multi-Provider LLM**: Switch between Ollama (local), OpenAI, Anthropic, and OpenRouter
 - **Modern Web UI**: Chat interface with query, upload, and settings tabs
 - **No-Docker Mode**: Run locally with in-memory Qdrant + sentence-transformers embeddings (no servers needed)
-- **18 Tests Passing**: Loaders, retriever (BM25/RRF), schemas, pipeline, evaluation dataset validation
+- **29 unit tests** in CI: loaders, retriever (BM25/RRF), schemas, pipeline, workers, evaluation dataset validation
 - **PDF/Markdown/TXT Ingestion**: Automatic text extraction, chunking (512 chars, 64 overlap), and indexing
 - **Query Rewriting**: LLM-powered query expansion for better retrieval
 - **Caching**: LRU caching for embeddings and queries with TTL
@@ -293,7 +293,7 @@ Query → Embed (sentence-transformers or Ollama)
 
 ### Evaluation Pipeline
 
-Real evaluation dataset (10 Q&A pairs on LangGraph/RAG topics), scored with RAGAS metrics, results auto-logged to MLflow:
+Evaluation dataset of 50 Q&A pairs on LLM tooling topics (`eval/dataset.json`), scored with RAGAS metrics, results logged to MLflow:
 
 ```bash
 python -m eval.run_eval
@@ -383,6 +383,19 @@ tracker.log_experiment(
     metrics={"faithfulness": 0.85, "answer_relevancy": 0.82}
 )
 ```
+
+## Limitations
+
+- **The eval corpus is easy.** `eval/build_corpus.py` builds `eval/corpus.md` from the golden set's own contexts, one short section per question. Every answer sits in a section written for it, with few distractors. The 0.94 hit@5 in `eval/results/run_2026-05-01.json` is retrieval on that corpus, not on long, messy documents.
+- **The test set is small and narrow.** 50 questions, all about LLM tooling: LangGraph, RAG, RAGAs, vector databases, fine-tuning. Three miss at k=5, one of them "What does PEFT stand for and what does it enable?".
+- **A hit is a string match.** A question counts as a hit when a retrieved chunk contains the first 60 characters of its ground-truth context. If a chunk boundary falls inside those 60 characters, a correct retrieval scores as a miss. A hit also says nothing about whether the answer is right.
+- **Citation presence checks the format only.** It looks for `[Source N]` in the answer. It doesn't check that source N supports the sentence it's attached to.
+- **No LLM-judge scores are committed.** `eval/run_eval.py` computes the four RAGAs metrics, but no RAGAs run is in the repo. The RAGAs table above lists targets, and the numbers in the MLflow snippet are an example.
+- **CI doesn't run the eval.** CI runs the 29 unit tests only. `eval/check_regression.py` runs when I run it, and compares hit@k, citation presence and the RAGAs scores, not latency. Only one run is committed, so there is no baseline yet.
+- **It's slow on a small local model.** With `llama3.2:3b` the same run took 4.2 s median and 8.9 s p95 end to end. The run file doesn't record the hardware.
+- **Retrieval state lives in one process.** The BM25 index is an in-memory singleton, rebuilt over the whole corpus on every upload. Two workers would hold two different indexes, and upload time grows with the corpus.
+- **Uploading a file twice indexes it twice.** Each chunk gets a random UUID, and there is no endpoint to delete a document.
+- **No auth, one shared collection.** Anyone who can reach the API can upload, query and see every document. Nothing is permission-aware.
 
 ## Testing
 

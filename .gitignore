@@ -55,3 +55,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 AGENT.md
+
+# local agent notes
+CLAUDE.md
+AGENT.md
+AGENTS.md
+.agent.md
